@@ -1,0 +1,70 @@
+# ROLE & TARGET
+You are an expert Frontend Developer, UI/UX Designer, and Game Developer. Build a fully functional, highly interactive single-page mobile web application (SPA) prototype using HTML5, Tailwind CSS (via CDN), and vanilla JavaScript. 
+
+The app is an educational game for kids (grades 3-5) about Native Hawaiian ecology, blending mechanics from "Pokémon GO" and "Seek by iNaturalist".
+
+# STATE MANAGEMENT (What the JS must track)
+1. **currentView**: Tracking the active screen ('ahupuaa', 'camera', 'piko', 'plant_index', 'tasks', 'settings').
+2. **collectedPlants**: Array of unique plant IDs the user has scanned/unlocked (Initially empty).
+3. **inventory**: Array of instances of plants currently held by the user and ready to be placed on the map (Initially empty).
+4. **plantDatabase**: Array of plant objects:
+   - *Kukui*: { id: 'kukui', name: 'Kukui', tags: ['trees', 'edible'], zone: 'kula', image: '✨', info: 'The Candlenut tree. Its nuts were used for light, oil, and medicine.' }
+   - *Kalo*: { id: 'kalo', name: 'Kalo', tags: ['edible'], zone: 'kai', info: 'Taro. A sacred staple food in Hawaiian culture representing family and ancestry.' }
+   - *ʻŌhiʻa*: { id: 'ohia', name: 'ʻŌhiʻa', tags: ['trees', 'lei'], zone: 'uka', info: 'ʻŌhiʻa Lehua. A vital forest tree that gathers rain and is sacred to Laka.' }
+
+# APP VIEW ROUTING & NAVIGATION
+Implement a robust conditional rendering system in JS to swap between views while keeping the Bottom Navigation Bar permanently fixed at the bottom.
+
+## 1. FIXED BOTTOM NAVIGATION BAR
+- Styled as a sleek, boxy bar stretching full width at the very bottom.
+- Contains 3 main interactive tabs evenly spaced:
+  - **Left Tab (Ahupuaʻa):** Displays an image/icon representing the Big Island of Hawaii with the text "Ahupuaʻa" directly below it. Clicking this opens the Map view.
+  - **Middle Tab (Camera):** Displays a camera icon with the text "Camera" directly below it. Clicking this opens the Camera view.
+  - **Right Tab (Piko):** Displays a spiral symbol with the text "Piko" directly below it. Clicking this opens the Piko Dashboard view.
+
+---
+
+# SCREEN SPECIFIC DESIGNS & LOGIC
+
+## VIEW A: AHUPUAʻA MAP & INVENTORY
+- **Layout:** Divided vertically into the main map area and the inventory bar.
+- **Vertical Zone Indicator:** On the far right edge of the screen, display a vertical level indicator taking up the space above the inventory. Divide it into 3 equal text boxes stacked vertically: Top says "Uka", Middle says "Kula", Bottom says "Kai". Highlight the active zone text depending on where the user is zoomed or viewing.
+- **The Map Zone Controls:** Include a feature to zoom/focus into one of the 3 zones (Uka, Kula, Kai) via clicking/tapping or pinching.
+- **Retractable Inventory Bar:** Positioned directly above the bottom navigation bar.
+  - Features a small arrow button centered on top. Clicking it toggles the entire inventory sliding down out of sight or sliding back up.
+  - Inside: A horizontally scrollable row of rounded-corner square boxes representing held plants. Each box shows a realistic representation/emoji of the plant and its name below it.
+- **Drag-and-Drop Interaction & Validation:**
+  - Users can drag a plant card from their active inventory and drop it onto the visible Ahupuaʻa map zone.
+  - **Validation Check:** If a plant is dropped into its correct zone (e.g., ʻŌhiʻa into Uka), successfully place it permanently onto the map layout and remove it from inventory.
+  - **Error Pop-up:** If dropped into the incorrect zone, trigger an overlay modal or clear toast notification stating: "You can't plant it there!", accompanied by a friendly hint about where that plant naturally thrives.
+
+## VIEW B: MOCK CAMERA FEED
+- **Layout:** A full-bleed dark camera viewfinder screen mimicking a real mobile capture experience.
+- **Focus Box:** Right in the dead-center of the screen, render 4 right-angle corner lines (`┌ ┐ └ ┘`) forming a perfect square focus overlay crosshair.
+- **Shutter Button:** Render a large, highly interactive circular camera shutter button. Position this button directly below the focus square, but safely above the fixed bottom navigation camera icon.
+- **Mock Capture Action:** Clicking this shutter button instantly plays a camera flash animation and pulls a random plant from the 3 test plants (*Kukui*, *Kalo*, or *ʻŌhiʻa*). It displays a success popup: "You found [Plant Name]!", automatically updates the global state to add it to `inventory`, and unlocks it in the `collectedPlants` registry.
+
+## VIEW C: PIKO DASHBOARD (The Hub)
+- **Layout:** When the Piko tab is active, display a new menu page dominated by 3 massive stacked, full-width buttons. Each button takes up roughly 1/3 of the available vertical dashboard screen space.
+- **Button Styling:** All buttons feature heavily rounded corners with their titles vertically and horizontally centered inside the box.
+  - **Top Button ("Plant index"):** Features a decorative icon/image placed in its **top-right** corner. Clicking it navigates to the Plant Index View.
+  - **Middle Button ("Tasks"):** Features a decorative icon/image placed in its **top-left** corner. Clicking it navigates to the Tasks View.
+  - **Bottom Button ("Settings"):** Features a decorative icon/image placed in its **top-right** corner. Clicking it navigates to the Settings View.
+
+## VIEW D: PLANT INDEX SUB-PAGE
+- **Layout:** - **Header:** Top-left header text reading "Plant index". Directly underneath it, place a wide text input Search Bar.
+  - **Horizontal Filter Pills:** Below the search bar, provide a row of rounded, clickable filter pill buttons labeled: "All", "Fern", "Vine", "Trees", "Edible", "Lei". Clicking a pill filters the plant list dynamically by its tags.
+  - **Scrollable List Grid:** A vertical scroll list displaying all plants in the app database.
+- **Gamified Visibility Rule:**
+  - **If Collected:** (Plant exists in `collectedPlants`), show its real image/emoji, its authentic name, and its ecological details. It is fully clickable to read more.
+  - **If NOT Collected:** Hide its identity completely. Display a giant question mark `?` for its image, and change its text label to `???`. This row is locked and unclickable.
+
+## VIEW E & F: TASKS & SETTINGS SUB-PAGES
+- **Tasks View:** Display a neat card list of challenges (e.g., "Collect your first plant", "Successfully plant a tree in Uka") with clean checkboxes or progress status bars. Include a prominent "Back to Piko" button at the top.
+- **Settings View:** Provide a clean menu showing mock options for sound effects, text size scaling for children, and credits. Include a prominent "Back to Piko" button at the top.
+
+# TECHNICAL REQUIREMENTS
+- Write semantic, ultra-clean modern JavaScript.
+- Use Tailwind utility classes beautifully to give it a bright, colorful, child-friendly gamified look.
+- Ensure all views feel snappy, touch targets are massive for kid-friendly ergonomics, and UI navigation transitions smoothly.
+- Bundle this beautifully into an organized web workspace structure that runs flawlessly right out of the box on Replit.

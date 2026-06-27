@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Ahupuaʻa Game"
+version = "1.0.0"
+id = "artifacts/ahupuaa-game"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22395
+
+[services.development]
+run = "pnpm --filter @workspace/ahupuaa-game run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ahupuaa-game", "run", "build" ]
+publicDir = "artifacts/ahupuaa-game/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22395"
+BASE_PATH = "/"
