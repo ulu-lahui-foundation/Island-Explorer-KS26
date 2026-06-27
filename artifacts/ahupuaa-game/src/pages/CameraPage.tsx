@@ -109,12 +109,19 @@ export function CameraPage() {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return null;
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
+
+    // Downscale to max 640px wide to keep payload small
+    const MAX_WIDTH = 640;
+    const scale = Math.min(1, MAX_WIDTH / (video.videoWidth || 640));
+    canvas.width = Math.round((video.videoWidth || 640) * scale);
+    canvas.height = Math.round((video.videoHeight || 480) * scale);
+
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+
+    // Quality 0.7 keeps file small while retaining enough detail for classification
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
     return dataUrl.split(",")[1];
   };
 
