@@ -4,9 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Camera, X, RotateCcw, Leaf } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const ROBOFLOW_API_KEY = import.meta.env.VITE_ROBOFLOW_API_KEY as string;
-const ROBOFLOW_URL =
-  "https://serverless.roboflow.com/aina-intelligence-lab/workflows/plant-photo-classifier-1782571434374";
+const CLASSIFY_URL = "/api/classify-plant";
 
 type ScanState = "idle" | "scanning" | "flashing" | "classifying" | "done" | "unknown" | "error";
 
@@ -139,15 +137,10 @@ export function CameraPage() {
     }
 
     try {
-      const response = await fetch(ROBOFLOW_URL, {
+      const response = await fetch(CLASSIFY_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          api_key: ROBOFLOW_API_KEY,
-          inputs: {
-            image: { type: "base64", value: base64 },
-          },
-        }),
+        body: JSON.stringify({ imageBase64: base64 }),
       });
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
