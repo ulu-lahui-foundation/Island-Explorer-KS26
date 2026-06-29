@@ -44,13 +44,30 @@ function extractTopPrediction(result: unknown): string | null {
   }
 }
 
+// All known class names the Roboflow model may return for each plant id.
+// Add new aliases here whenever the model is retrained with different labels.
+const PLANT_ALIASES: Record<string, string[]> = {
+  ohia:  ["ohia", "ohia lehua", "lehua", "metrosideros"],
+  kalo:  ["kalo", "taro", "colocasia", "dasheen", "poi", "coco yam", "cocoyam"],
+  kukui: ["kukui", "candlenut", "aleurites", "candletree"],
+};
+
 function matchPlant(label: string | null) {
   if (!label) return null;
-  const lower = label.toLowerCase().replace(/[^a-z]/g, "");
+  const lower = label.toLowerCase().trim();
+  const stripped = lower.replace(/[^a-z]/g, "");
+
   return PLANT_DATABASE.find((p) => {
-    const name = p.name.toLowerCase().replace(/[^a-z]/g, "");
-    const id = p.id.toLowerCase();
-    return lower.includes(id) || lower.includes(name) || name.includes(lower) || id.includes(lower);
+    const aliases = PLANT_ALIASES[p.id] ?? [];
+    // Check every alias — both full-string equality and substring containment
+    return aliases.some(
+      (alias) =>
+        lower === alias ||
+        lower.includes(alias) ||
+        alias.includes(lower) ||
+        stripped.includes(alias.replace(/[^a-z]/g, "")) ||
+        alias.replace(/[^a-z]/g, "").includes(stripped)
+    );
   }) ?? null;
 }
 
@@ -156,7 +173,9 @@ export function CameraPage() {
       console.log("Roboflow response:", JSON.stringify(result));
 
       const label = extractTopPrediction(result);
+      console.log("[Scan] raw label from Roboflow:", label);
       const plant = matchPlant(label);
+      console.log("[Scan] matched plant:", plant?.id ?? "none");
 
       if (plant) {
         setFoundPlant(plant);

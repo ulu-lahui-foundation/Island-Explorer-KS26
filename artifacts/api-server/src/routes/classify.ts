@@ -51,7 +51,27 @@ router.post(
         return;
       }
 
-      req.log.info({ data }, "Roboflow response");
+      // Log a stripped summary — exclude output_image base64 blobs so the prediction is readable
+      try {
+        const d = data as Record<string, unknown>;
+        const outputs = Array.isArray(d?.outputs)
+          ? (d.outputs as Record<string, unknown>[]).map((o) => {
+              const stripped: Record<string, unknown> = {};
+              for (const [k, v] of Object.entries(o)) {
+                if (k === "output_image") {
+                  stripped[k] = "<base64 image omitted>";
+                } else {
+                  stripped[k] = v;
+                }
+              }
+              return stripped;
+            })
+          : d?.outputs;
+        req.log.info({ outputs }, "Roboflow prediction");
+      } catch {
+        req.log.info({ data }, "Roboflow response (raw)");
+      }
+
       res.json(data);
     } catch (err) {
       req.log.error({ err }, "Failed to reach Roboflow");
