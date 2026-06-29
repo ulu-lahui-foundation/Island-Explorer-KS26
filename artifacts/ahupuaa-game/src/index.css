@@ -55,84 +55,96 @@
   --badge-outline: rgba(0,0,0, .05);
   --opaque-button-border-intensity: -8;
   --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
+  --elevate-2: rgba(0,0,0, .06);
 
-  /* Tropical Theme */
-  --background: 45 40% 98%; /* Warm cream */
-  --foreground: 160 30% 15%; /* Deep jungle green text */
-  
-  --border: 140 20% 85%;
-  --input: 140 20% 85%;
-  --ring: 142 71% 28%;
+  /* ─── Palette ───────────────────────────────────────────────
+     #2F6F4E  →  HSL 149 40% 31%   deep forest green (primary)
+     #7BC96F  →  HSL 112 46% 61%   bright leaf green (secondary)
+     #F6F1E7  →  HSL  40 45% 94%   warm cream        (background)
+     #26342F  →  HSL 159 16% 18%   dark forest       (foreground)
+  ──────────────────────────────────────────────────────────── */
 
-  --card: 0 0% 100%;
-  --card-foreground: 160 30% 15%;
-  --card-border: 140 20% 85%;
+  --background: 40 45% 94%;
+  --foreground: 159 16% 18%;
 
-  --popover: 0 0% 100%;
-  --popover-foreground: 160 30% 15%;
-  --popover-border: 140 20% 85%;
+  --border: 149 18% 78%;
+  --input:  149 18% 78%;
+  --ring:   149 40% 31%;
 
-  --primary: 142 71% 28%; /* Lush Green */
-  --primary-foreground: 0 0% 100%;
+  /* Cards sit just above the background — a touch lighter cream */
+  --card:            40 30% 98%;
+  --card-foreground: 159 16% 18%;
+  --card-border:     149 15% 82%;
 
-  --secondary: 45 93% 65%; /* Sand Gold */
-  --secondary-foreground: 160 80% 15%;
+  --popover:            40 30% 98%;
+  --popover-foreground: 159 16% 18%;
+  --popover-border:     149 15% 82%;
 
-  --muted: 140 20% 90%;
-  --muted-foreground: 160 20% 40%;
+  /* #2F6F4E */
+  --primary:            149 40% 31%;
+  --primary-foreground: 40 45% 94%;
 
-  --accent: 180 70% 35%; /* Ocean Teal */
-  --accent-foreground: 0 0% 100%;
+  /* #7BC96F */
+  --secondary:            112 46% 61%;
+  --secondary-foreground: 159 16% 18%;
 
-  --destructive: 350 80% 50%; /* Lehua Red */
-  --destructive-foreground: 0 0% 100%;
+  /* Muted — desaturated cream */
+  --muted:            40 20% 87%;
+  --muted-foreground: 149 16% 42%;
 
-  --chart-1: 142 71% 28%;
-  --chart-2: 45 93% 65%;
-  --chart-3: 180 70% 35%;
-  --chart-4: 350 80% 50%;
-  --chart-5: 200 80% 40%;
+  /* Accent — same leaf green, used for highlights */
+  --accent:            112 46% 61%;
+  --accent-foreground: 159 16% 18%;
+
+  /* Destructive — keep a readable red for errors */
+  --destructive:            350 72% 48%;
+  --destructive-foreground: 40 45% 94%;
+
+  --chart-1: 149 40% 31%;
+  --chart-2: 112 46% 61%;
+  --chart-3: 149 25% 55%;
+  --chart-4: 350 72% 48%;
+  --chart-5: 40 45% 94%;
 
   --app-font-sans: 'Quicksand', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
-  --radius: 1rem; 
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --radius: 1rem;
+  --shadow-sm: 0 1px 2px 0 rgb(38 52 47 / 0.06);
+  --shadow:    0 4px 6px -1px rgb(38 52 47 / 0.10), 0 2px 4px -2px rgb(38 52 47 / 0.06);
+  --shadow-md: 0 10px 15px -3px rgb(38 52 47 / 0.10), 0 4px 6px -4px rgb(38 52 47 / 0.06);
 
-  --sidebar-primary-border: hsl(var(--primary));
-  --sidebar-accent-border: hsl(var(--accent));
-  --primary-border: hsl(var(--primary));
-  --secondary-border: hsl(var(--secondary));
-  --muted-border: hsl(var(--muted));
-  --accent-border: hsl(var(--accent));
-  --destructive-border: hsl(var(--destructive));
+  --sidebar-primary-border:  hsl(var(--primary));
+  --sidebar-accent-border:   hsl(var(--accent));
+  --primary-border:          hsl(var(--primary));
+  --secondary-border:        hsl(var(--secondary));
+  --muted-border:            hsl(var(--muted));
+  --accent-border:           hsl(var(--accent));
+  --destructive-border:      hsl(var(--destructive));
 }
 
 .dark {
-  --background: 160 40% 10%;
-  --foreground: 45 40% 98%;
-  --border: 160 30% 20%;
-  --input: 160 30% 20%;
-  --ring: 142 71% 40%;
-  --card: 160 40% 12%;
-  --card-foreground: 45 40% 98%;
-  --card-border: 160 30% 20%;
-  --popover: 160 40% 12%;
-  --popover-foreground: 45 40% 98%;
-  --popover-border: 160 30% 20%;
-  --primary: 142 71% 40%;
-  --primary-foreground: 160 40% 10%;
-  --secondary: 45 93% 65%;
-  --secondary-foreground: 160 40% 10%;
-  --muted: 160 30% 20%;
-  --muted-foreground: 160 20% 70%;
-  --accent: 180 70% 40%;
-  --accent-foreground: 160 40% 10%;
-  --destructive: 350 80% 60%;
-  --destructive-foreground: 0 0% 100%;
+  --background:         159 20% 12%;
+  --foreground:          40 45% 94%;
+  --border:             149 18% 24%;
+  --input:              149 18% 24%;
+  --ring:               112 46% 61%;
+  --card:               159 20% 15%;
+  --card-foreground:     40 45% 94%;
+  --card-border:        149 18% 24%;
+  --popover:            159 20% 15%;
+  --popover-foreground:  40 45% 94%;
+  --popover-border:     149 18% 24%;
+  --primary:            112 46% 61%;
+  --primary-foreground: 159 16% 18%;
+  --secondary:          149 40% 42%;
+  --secondary-foreground: 40 45% 94%;
+  --muted:              159 16% 22%;
+  --muted-foreground:    40 20% 65%;
+  --accent:             112 46% 61%;
+  --accent-foreground:  159 16% 18%;
+  --destructive:        350 72% 55%;
+  --destructive-foreground: 40 45% 94%;
 }
 
 @layer base {
