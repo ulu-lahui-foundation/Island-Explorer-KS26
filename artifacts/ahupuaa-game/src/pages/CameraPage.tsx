@@ -6,37 +6,57 @@ import { Button } from "@/components/ui/button";
 
 const CLASSIFY_URL = "/api/classify-plant";
 
-type ScanState = "idle" | "scanning" | "flashing" | "classifying" | "done" | "unknown" | "error";
+// ---------------------------------------------------------------------------
+// Response parsing — fully defensive against any Roboflow workflow output shape.
+// The new workflow (plant-identification-app-20-v6-logic) may use different
+// output key names than the old classifier. We walk the entire outputs array
+// and collect every string that looks like a class / prediction label.
+// ---------------------------------------------------------------------------
 
+/** Recursively collect every string value of keys that sound like a prediction label */
+function collectLabels(obj: unknown, depth = 0): string[] {
+  if (depth > 6 || !obj || typeof obj !== "object") return [];
+  const LABEL_KEYS = new Set([
+    "top", "class", "label", "plant", "predicted_class",
+    "prediction", "name", "result", "classification",
+  ]);
+
+  const results: string[] = [];
+
+  if (Array.isArray(obj)) {
+    for (const item of obj) results.push(...collectLabels(item, depth + 1));
+    return results;
+  }
+
+  for (const [key, val] of Object.entries(obj as Record<string, unknown>)) {
+    if (LABEL_KEYS.has(key.toLowerCase()) && typeof val === "string" && val.length > 0) {
+      results.push(val);
+    } else {
+      results.push(...collectLabels(val, depth + 1));
+    }
+  }
+  return results;
+}
+
+/** Pick the most useful label from a Roboflow workflow response */
 function extractTopPrediction(result: unknown): string | null {
   try {
     const data = result as Record<string, unknown>;
 
-    const outputs = data?.outputs;
-    if (Array.isArray(outputs)) {
-      for (const out of outputs) {
-        const o = out as Record<string, unknown>;
-        for (const val of Object.values(o)) {
-          const v = val as Record<string, unknown>;
-          if (v?.top) return String(v.top);
-          if (v?.class) return String(v.class);
-          const preds = v?.predictions;
-          if (Array.isArray(preds) && preds.length > 0) {
-            const p = preds[0] as Record<string, unknown>;
-            return String(p?.class ?? p?.label ?? "");
-          }
+    // Standard workflow shape: { outputs: [ { <output_name>: { top, predictions, ... } } ] }
+    if (Array.isArray(data?.outputs)) {
+      for (const out of data.outputs as unknown[]) {
+        const labels = collectLabels(out);
+        if (labels.length > 0) {
+          console.log("[Scan] all labels found in outputs:", labels);
+          return labels[0];
         }
       }
     }
 
-    const predictions = data?.predictions;
-    if (Array.isArray(predictions) && predictions.length > 0) {
-      const p = predictions[0] as Record<string, unknown>;
-      return String(p?.class ?? p?.label ?? p?.top ?? "");
-    }
-
-    const top = data?.top ?? data?.class ?? data?.label;
-    if (top) return String(top);
+    // Flat shape fallback: { top, class, predictions: [...] }
+    const labels = collectLabels(data);
+    if (labels.length > 0) return labels[0];
 
     return null;
   } catch {
@@ -44,12 +64,15 @@ function extractTopPrediction(result: unknown): string | null {
   }
 }
 
-// All known class names the Roboflow model may return for each plant id.
-// Add new aliases here whenever the model is retrained with different labels.
+// ---------------------------------------------------------------------------
+// Plant matching — alias table handles every known class name variant.
+// Add new aliases here when the model is retrained with different labels.
+// ---------------------------------------------------------------------------
+
 const PLANT_ALIASES: Record<string, string[]> = {
-  ohia:  ["ohia", "ohia lehua", "lehua", "metrosideros"],
-  kalo:  ["kalo", "taro", "colocasia", "dasheen", "poi", "coco yam", "cocoyam"],
-  kukui: ["kukui", "candlenut", "aleurites", "candletree"],
+  ohia:  ["ohia", "ohia lehua", "lehua", "metrosideros", "ohia-lehua"],
+  kalo:  ["kalo", "taro", "colocasia", "dasheen", "poi", "coco yam", "cocoyam", "hawaiian taro"],
+  kukui: ["kukui", "candlenut", "aleurites", "candletree", "kukui nut"],
 };
 
 function matchPlant(label: string | null) {
@@ -57,19 +80,27 @@ function matchPlant(label: string | null) {
   const lower = label.toLowerCase().trim();
   const stripped = lower.replace(/[^a-z]/g, "");
 
-  return PLANT_DATABASE.find((p) => {
-    const aliases = PLANT_ALIASES[p.id] ?? [];
-    // Check every alias — both full-string equality and substring containment
-    return aliases.some(
-      (alias) =>
-        lower === alias ||
-        lower.includes(alias) ||
-        alias.includes(lower) ||
-        stripped.includes(alias.replace(/[^a-z]/g, "")) ||
-        alias.replace(/[^a-z]/g, "").includes(stripped)
-    );
-  }) ?? null;
+  return (
+    PLANT_DATABASE.find((p) => {
+      const aliases = PLANT_ALIASES[p.id] ?? [];
+      return aliases.some((alias) => {
+        const a = alias.toLowerCase();
+        const as = a.replace(/[^a-z]/g, "");
+        return (
+          lower === a ||
+          lower.includes(a) ||
+          a.includes(lower) ||
+          stripped.includes(as) ||
+          as.includes(stripped)
+        );
+      });
+    }) ?? null
+  );
 }
+
+// ---------------------------------------------------------------------------
+
+type ScanState = "idle" | "scanning" | "flashing" | "classifying" | "done" | "unknown" | "error";
 
 export function CameraPage() {
   const { collectPlant } = useGame();
@@ -83,6 +114,7 @@ export function CameraPage() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [foundPlant, setFoundPlant] = useState<(typeof PLANT_DATABASE)[0] | null>(null);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
+  const [debugLabel, setDebugLabel] = useState<string | null>(null);
 
   const startCamera = useCallback(async (facing: "environment" | "user") => {
     if (streamRef.current) {
@@ -127,7 +159,6 @@ export function CameraPage() {
     const canvas = canvasRef.current;
     if (!video || !canvas) return null;
 
-    // Downscale to max 640px wide to keep payload small
     const MAX_WIDTH = 640;
     const scale = Math.min(1, MAX_WIDTH / (video.videoWidth || 640));
     canvas.width = Math.round((video.videoWidth || 640) * scale);
@@ -137,7 +168,6 @@ export function CameraPage() {
     if (!ctx) return null;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Quality 0.7 keeps file small while retaining enough detail for classification
     const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
     return dataUrl.split(",")[1];
   };
@@ -146,6 +176,7 @@ export function CameraPage() {
     if (scanState !== "idle" || !cameraReady) return;
 
     setScanState("scanning");
+    setDebugLabel(null);
 
     await new Promise((r) => setTimeout(r, 1800));
 
@@ -170,10 +201,10 @@ export function CameraPage() {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const result = await response.json();
 
-      console.log("Roboflow response:", JSON.stringify(result));
-
       const label = extractTopPrediction(result);
       console.log("[Scan] raw label from Roboflow:", label);
+      setDebugLabel(label);
+
       const plant = matchPlant(label);
       console.log("[Scan] matched plant:", plant?.id ?? "none");
 
@@ -190,15 +221,14 @@ export function CameraPage() {
   };
 
   const handleCollect = () => {
-    if (foundPlant) {
-      collectPlant(foundPlant);
-    }
+    if (foundPlant) collectPlant(foundPlant);
     resetScan();
   };
 
   const resetScan = () => {
     setFoundPlant(null);
     setScanState("idle");
+    setDebugLabel(null);
   };
 
   const isScanning = scanState === "scanning";
@@ -208,7 +238,6 @@ export function CameraPage() {
 
   return (
     <div className="relative w-full h-full bg-black flex flex-col overflow-hidden pb-20">
-      {/* Live Camera Feed */}
       <video
         ref={videoRef}
         autoPlay
@@ -219,13 +248,9 @@ export function CameraPage() {
       />
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* Loading / Error states */}
       {!cameraReady && !cameraError && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-          >
+          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}>
             <Camera size={40} className="text-green-400" />
           </motion.div>
           <p className="text-white/70 text-sm">Starting camera…</p>
@@ -236,11 +261,7 @@ export function CameraPage() {
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8">
           <Camera size={48} className="text-red-400" />
           <p className="text-white text-center text-sm leading-relaxed">{cameraError}</p>
-          <Button
-            variant="outline"
-            className="border-white/30 text-white"
-            onClick={() => startCamera(facingMode)}
-          >
+          <Button variant="outline" className="border-white/30 text-white" onClick={() => startCamera(facingMode)}>
             Try Again
           </Button>
         </div>
@@ -250,7 +271,6 @@ export function CameraPage() {
       {isActive && cameraReady && (
         <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
           <div className="relative w-64 h-64">
-            {/* Corners */}
             <motion.div
               animate={isScanning || isClassifying ? { opacity: [1, 0.4, 1] } : { opacity: 1 }}
               transition={{ repeat: Infinity, duration: 1.2 }}
@@ -261,8 +281,6 @@ export function CameraPage() {
               <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-green-400 rounded-bl-sm" />
               <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-green-400 rounded-br-sm" />
             </motion.div>
-
-            {/* Scanning line */}
             <AnimatePresence>
               {isScanning && (
                 <motion.div
@@ -275,8 +293,6 @@ export function CameraPage() {
               )}
             </AnimatePresence>
           </div>
-
-          {/* Status label */}
           <div className="mt-6 px-4 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
             <p className="text-white/80 text-xs tracking-widest uppercase">
               {isScanning ? "Scanning…" : isClassifying ? "Identifying…" : "Point at a plant"}
@@ -298,7 +314,7 @@ export function CameraPage() {
         )}
       </AnimatePresence>
 
-      {/* Flip camera button */}
+      {/* Flip camera */}
       {cameraReady && isActive && (
         <button
           onClick={handleFlipCamera}
@@ -309,7 +325,7 @@ export function CameraPage() {
         </button>
       )}
 
-      {/* Shutter Button */}
+      {/* Shutter */}
       {cameraReady && (
         <div className="absolute bottom-28 left-0 right-0 flex justify-center">
           <button
@@ -335,42 +351,31 @@ export function CameraPage() {
           <motion.div
             key="success-sheet"
             className="absolute inset-0 z-50 flex items-end bg-black/60 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           >
             <motion.div
               className="w-full bg-white rounded-t-3xl p-6 pb-28 shadow-2xl"
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
+              initial={{ y: "100%" }} animate={{ y: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
             >
               <div className="flex justify-end mb-1">
-                <button onClick={resetScan} className="text-gray-400 hover:text-gray-600">
-                  <X size={20} />
-                </button>
+                <button onClick={resetScan} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
               </div>
               <div className="text-center mb-5">
                 <span className="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
                   Plant Identified
                 </span>
-                <h2 className="text-3xl font-bold text-gray-900">
-                  You found {foundPlant.name}! 🌿
-                </h2>
+                <h2 className="text-3xl font-bold text-gray-900">You found {foundPlant.name}! 🌿</h2>
               </div>
-
               <div className="aspect-square w-44 mx-auto rounded-2xl overflow-hidden shadow-lg mb-5 border-4 border-white ring-2 ring-green-200">
-                <img
-                  src={foundPlant.image}
-                  alt={foundPlant.name}
-                  className="w-full h-full object-cover"
-                />
+                <img src={foundPlant.image} alt={foundPlant.name} className="w-full h-full object-cover" />
               </div>
-
               <p className="text-center text-gray-600 mb-7 px-4 font-medium leading-relaxed text-sm">
                 {foundPlant.info}
               </p>
-
+              {debugLabel && (
+                <p className="text-center text-xs text-gray-400 mb-3">Model returned: <em>{debugLabel}</em></p>
+              )}
               <Button
                 data-testid="button-add-to-inventory"
                 onClick={handleCollect}
@@ -378,9 +383,7 @@ export function CameraPage() {
               >
                 Add to Inventory
               </Button>
-              <Button variant="ghost" onClick={resetScan} className="w-full mt-2">
-                Discard
-              </Button>
+              <Button variant="ghost" onClick={resetScan} className="w-full mt-2">Discard</Button>
             </motion.div>
           </motion.div>
         )}
@@ -392,14 +395,11 @@ export function CameraPage() {
           <motion.div
             key="unknown-sheet"
             className="absolute inset-0 z-50 flex items-end bg-black/60 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           >
             <motion.div
               className="w-full bg-white rounded-t-3xl p-6 pb-28 shadow-2xl"
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
+              initial={{ y: "100%" }} animate={{ y: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
             >
               <div className="text-center mb-6">
@@ -411,12 +411,11 @@ export function CameraPage() {
                   We couldn't identify that plant. Try getting closer, better lighting, or make sure
                   a plant is clearly in the frame.
                 </p>
+                {debugLabel && (
+                  <p className="text-xs text-gray-400 mt-3">Model returned: <em>"{debugLabel}"</em></p>
+                )}
               </div>
-              <Button
-                data-testid="button-try-again"
-                onClick={resetScan}
-                className="w-full py-5 text-base rounded-2xl"
-              >
+              <Button data-testid="button-try-again" onClick={resetScan} className="w-full py-5 text-base rounded-2xl">
                 Try Again
               </Button>
             </motion.div>
@@ -430,14 +429,11 @@ export function CameraPage() {
           <motion.div
             key="error-sheet"
             className="absolute inset-0 z-50 flex items-end bg-black/60 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           >
             <motion.div
               className="w-full bg-white rounded-t-3xl p-6 pb-28 shadow-2xl"
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
+              initial={{ y: "100%" }} animate={{ y: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
             >
               <div className="text-center mb-6">
@@ -446,15 +442,10 @@ export function CameraPage() {
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h2>
                 <p className="text-gray-500 text-sm leading-relaxed px-4">
-                  Couldn't reach the plant identification service. Check your internet connection
-                  and try again.
+                  Couldn't reach the plant identification service. Check your internet connection and try again.
                 </p>
               </div>
-              <Button
-                data-testid="button-retry-error"
-                onClick={resetScan}
-                className="w-full py-5 text-base rounded-2xl"
-              >
+              <Button data-testid="button-retry-error" onClick={resetScan} className="w-full py-5 text-base rounded-2xl">
                 Try Again
               </Button>
             </motion.div>

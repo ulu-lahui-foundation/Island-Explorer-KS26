@@ -4,7 +4,91 @@ import express from "express";
 const router = Router();
 
 const ROBOFLOW_URL =
-  "https://serverless.roboflow.com/aina-intelligence-lab/workflows/plant-photo-classifier-1782571434374";
+  "https://serverless.roboflow.com/aina-intelligence-lab/workflows/plant-identification-app-20-v6-logic";
+
+const RETRY_ATTEMPTS = 2;
+const TIMEOUT_MS = 20_000;
+
+/** Strip any base64 image blobs before logging so predictions stay readable */
+function stripImageBlobs(obj: unknown): unknown {
+  if (Array.isArray(obj)) return obj.map(stripImageBlobs);
+  if (obj && typeof obj === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      if (
+        typeof v === "string" &&
+        v.length > 200 &&
+        (k.toLowerCase().includes("image") ||
+          k.toLowerCase().includes("base64") ||
+          k.toLowerCase().includes("value"))
+      ) {
+        result[k] = `<${typeof v} len=${v.length} omitted>`;
+      } else {
+        result[k] = stripImageBlobs(v);
+      }
+    }
+    return result;
+  }
+  return obj;
+}
+
+/** Call Roboflow with exponential backoff retries and an AbortController timeout */
+async function callRoboflow(
+  apiKey: string,
+  imageBase64: string,
+  attempt = 0
+): Promise<unknown> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  try {
+    const rfRes = await fetch(ROBOFLOW_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: apiKey,
+        inputs: {
+          image: { type: "base64", value: imageBase64 },
+        },
+      }),
+      signal: controller.signal,
+    });
+
+    const text = await rfRes.text();
+
+    if (!rfRes.ok) {
+      const err = new Error(`Roboflow HTTP ${rfRes.status}: ${text}`);
+      (err as NodeJS.ErrnoException).code = String(rfRes.status);
+      throw err;
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error(`Roboflow non-JSON response: ${text.slice(0, 200)}`);
+    }
+  } catch (err) {
+    clearTimeout(timer);
+
+    const isRetryable =
+      attempt < RETRY_ATTEMPTS &&
+      (err instanceof Error &&
+        (err.name === "AbortError" ||
+          (err as NodeJS.ErrnoException).code === "ECONNRESET" ||
+          (err as NodeJS.ErrnoException).code === "503" ||
+          (err as NodeJS.ErrnoException).code === "429"));
+
+    if (isRetryable) {
+      const delay = 500 * Math.pow(2, attempt);
+      await new Promise((r) => setTimeout(r, delay));
+      return callRoboflow(apiKey, imageBase64, attempt + 1);
+    }
+
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 router.post(
   "/classify-plant",
@@ -23,59 +107,12 @@ router.post(
     }
 
     try {
-      const rfRes = await fetch(ROBOFLOW_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          api_key: apiKey,
-          inputs: {
-            image: { type: "base64", value: imageBase64 },
-          },
-        }),
-      });
-
-      const text = await rfRes.text();
-
-      if (!rfRes.ok) {
-        req.log.error({ status: rfRes.status, body: text }, "Roboflow error");
-        res.status(rfRes.status).json({ error: "Roboflow request failed", detail: text });
-        return;
-      }
-
-      let data: unknown;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        req.log.error({ text }, "Roboflow non-JSON response");
-        res.status(502).json({ error: "Roboflow returned non-JSON", detail: text });
-        return;
-      }
-
-      // Log a stripped summary — exclude output_image base64 blobs so the prediction is readable
-      try {
-        const d = data as Record<string, unknown>;
-        const outputs = Array.isArray(d?.outputs)
-          ? (d.outputs as Record<string, unknown>[]).map((o) => {
-              const stripped: Record<string, unknown> = {};
-              for (const [k, v] of Object.entries(o)) {
-                if (k === "output_image") {
-                  stripped[k] = "<base64 image omitted>";
-                } else {
-                  stripped[k] = v;
-                }
-              }
-              return stripped;
-            })
-          : d?.outputs;
-        req.log.info({ outputs }, "Roboflow prediction");
-      } catch {
-        req.log.info({ data }, "Roboflow response (raw)");
-      }
-
+      const data = await callRoboflow(apiKey, imageBase64);
+      req.log.info({ outputs: stripImageBlobs(data) }, "Roboflow prediction");
       res.json(data);
     } catch (err) {
-      req.log.error({ err }, "Failed to reach Roboflow");
-      res.status(502).json({ error: "Failed to reach Roboflow" });
+      req.log.error({ err }, "Roboflow call failed");
+      res.status(502).json({ error: "Failed to reach Roboflow", detail: String(err) });
     }
   }
 );
