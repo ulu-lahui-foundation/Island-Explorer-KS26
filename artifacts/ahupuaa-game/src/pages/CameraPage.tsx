@@ -267,36 +267,45 @@ export function CameraPage() {
         </div>
       )}
 
-      {/* Viewfinder overlay */}
+      {/* Viewfinder — tall corners spanning most of the screen */}
       {isActive && cameraReady && (
-        <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
-          <div className="relative w-64 h-64">
-            <motion.div
-              animate={isScanning || isClassifying ? { opacity: [1, 0.4, 1] } : { opacity: 1 }}
-              transition={{ repeat: Infinity, duration: 1.2 }}
-              className="absolute inset-0"
-            >
-              <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-green-400 rounded-tl-sm" />
-              <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-green-400 rounded-tr-sm" />
-              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-green-400 rounded-bl-sm" />
-              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-green-400 rounded-br-sm" />
-            </motion.div>
-            <AnimatePresence>
-              {isScanning && (
-                <motion.div
-                  key="scan-line"
-                  className="absolute left-0 right-0 h-0.5 bg-green-400 shadow-[0_0_12px_4px_rgba(74,222,128,0.6)]"
-                  initial={{ top: 0 }}
-                  animate={{ top: "100%" }}
-                  transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                />
-              )}
-            </AnimatePresence>
-          </div>
-          <div className="mt-6 px-4 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
-            <p className="text-white/80 text-xs tracking-widest uppercase">
-              {isScanning ? "Scanning…" : isClassifying ? "Identifying…" : "Point at a plant"}
-            </p>
+        <div className="absolute inset-0 pointer-events-none">
+          {/* Corner brackets: top pair near top, bottom pair ~144px above nav */}
+          <motion.div
+            animate={isScanning || isClassifying ? { opacity: [1, 0.4, 1] } : { opacity: 1 }}
+            transition={{ repeat: Infinity, duration: 1.2 }}
+            className="absolute inset-0"
+          >
+            {/* Top-left */}
+            <div className="absolute top-10 left-5 w-10 h-10 border-t-4 border-l-4 border-green-400 rounded-tl-sm" />
+            {/* Top-right */}
+            <div className="absolute top-10 right-5 w-10 h-10 border-t-4 border-r-4 border-green-400 rounded-tr-sm" />
+            {/* Bottom-left — kept in place */}
+            <div className="absolute bottom-36 left-5 w-10 h-10 border-b-4 border-l-4 border-green-400 rounded-bl-sm" />
+            {/* Bottom-right — kept in place */}
+            <div className="absolute bottom-36 right-5 w-10 h-10 border-b-4 border-r-4 border-green-400 rounded-br-sm" />
+          </motion.div>
+
+          {/* Scanning line — travels the full height between the corner pairs */}
+          <AnimatePresence>
+            {isScanning && (
+              <motion.div
+                key="scan-line"
+                className="absolute left-5 right-5 h-0.5 bg-green-400 shadow-[0_0_12px_4px_rgba(74,222,128,0.6)]"
+                style={{ top: 56 }}           /* start just below top corners (top-10 = 40px + bracket height) */
+                animate={{ top: "calc(100% - 176px)" }}   /* end at bottom-36 (144px) + bracket (32px) */
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Status label — same position as before, just above shutter */}
+          <div className="absolute bottom-24 left-0 right-0 flex justify-center">
+            <div className="px-4 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
+              <p className="text-white/80 text-xs tracking-widest uppercase">
+                {isScanning ? "Scanning…" : isClassifying ? "Identifying…" : "Point at a plant"}
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -325,9 +334,9 @@ export function CameraPage() {
         </button>
       )}
 
-      {/* Shutter */}
+      {/* Shutter — midway between status label (bottom-24) and nav bar (bottom-0) */}
       {cameraReady && (
-        <div className="absolute bottom-28 left-0 right-0 flex justify-center">
+        <div className="absolute bottom-10 left-0 right-0 flex justify-center">
           <button
             data-testid="button-shutter"
             onClick={handleScan}

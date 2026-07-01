@@ -4,6 +4,21 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
+const ZONE_ORDER: Record<string, number> = { uka: 0, kula: 1, kai: 2 };
+
+/** Zone ring/glow styles */
+const ZONE_RING: Record<string, React.CSSProperties> = {
+  uka:  { boxShadow: '0 0 0 3px #1a1a1a, 0 0 14px 4px rgba(0,0,0,0.55)' },
+  kula: { boxShadow: '0 0 0 3px #2F6F4E, 0 0 14px 4px rgba(47,111,78,0.60)' },
+  kai:  { boxShadow: '0 0 0 3px #3b82f6, 0 0 14px 4px rgba(59,130,246,0.55)' },
+};
+
+const ZONE_LABEL: Record<string, { bg: string; text: string }> = {
+  uka:  { bg: 'rgba(0,0,0,0.70)',          text: '#F6F1E7' },
+  kula: { bg: 'rgba(47,111,78,0.80)',      text: '#F6F1E7' },
+  kai:  { bg: 'rgba(59,130,246,0.80)',     text: '#F6F1E7' },
+};
+
 export function PlantIndexPage() {
   const { setCurrentView, collectedPlants } = useGame();
   const [filter, setFilter] = useState("All");
@@ -12,10 +27,24 @@ export function PlantIndexPage() {
 
   const filters = ["All", "Trees", "Edible", "Lei", "Fern", "Vine"];
 
-  const filteredPlants = PLANT_DATABASE.filter(plant => {
+  // 1. Apply search + tag filter
+  const matchesFilter = PLANT_DATABASE.filter(plant => {
     if (search && !plant.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (filter !== "All" && !plant.tags.includes(filter.toLowerCase())) return false;
     return true;
+  });
+
+  // 2. Sort: collected first (sorted by zone uka→kula→kai), unknown last
+  const sortedPlants = [...matchesFilter].sort((a, b) => {
+    const aCollected = collectedPlants.includes(a.id);
+    const bCollected = collectedPlants.includes(b.id);
+    if (aCollected && !bCollected) return -1;
+    if (!aCollected && bCollected) return 1;
+    // Both collected — sort by zone
+    if (aCollected && bCollected) {
+      return (ZONE_ORDER[a.zone] ?? 99) - (ZONE_ORDER[b.zone] ?? 99);
+    }
+    return 0;
   });
 
   return (
@@ -64,13 +93,27 @@ export function PlantIndexPage() {
             </button>
           ))}
         </div>
+
+        {/* Zone legend */}
+        <div className="flex gap-3 mt-3">
+          {(['uka', 'kula', 'kai'] as const).map(zone => (
+            <div key={zone} className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full shrink-0"
+                style={{ boxShadow: ZONE_RING[zone].boxShadow, background: zone === 'uka' ? '#1a1a1a' : zone === 'kula' ? '#2F6F4E' : '#3b82f6' }} />
+              <span className="text-xs font-bold capitalize" style={{ color: 'rgba(38,52,47,0.55)' }}>{zone}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Grid */}
       <div className="flex-1 overflow-y-auto p-4 pb-24">
         <div className="grid grid-cols-2 gap-4">
-          {filteredPlants.map((plant, i) => {
+          {sortedPlants.map((plant, i) => {
             const isCollected = collectedPlants.includes(plant.id);
+            const ringStyle = isCollected ? ZONE_RING[plant.zone] : {};
+            const labelColors = ZONE_LABEL[plant.zone];
+
             return (
               <motion.div
                 key={plant.id}
@@ -78,9 +121,9 @@ export function PlantIndexPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
                 onClick={() => isCollected && setSelectedPlant(plant)}
-                className="aspect-square rounded-2xl overflow-hidden relative shadow-sm"
+                className="aspect-square rounded-2xl overflow-hidden relative"
                 style={isCollected
-                  ? { cursor: 'pointer', background: '#F6F1E7', border: '1px solid rgba(47,111,78,0.15)' }
+                  ? { cursor: 'pointer', ...ringStyle }
                   : { background: '#26342F' }
                 }
               >
@@ -90,7 +133,11 @@ export function PlantIndexPage() {
                     <div className="absolute inset-x-0 bottom-0 p-3 pt-8"
                       style={{ background: 'linear-gradient(to top, rgba(38,52,47,0.85), transparent)' }}>
                       <p className="text-white font-bold truncate">{plant.name}</p>
-                      <p className="text-white/65 text-xs font-medium uppercase">{plant.zone}</p>
+                      {/* Zone badge */}
+                      <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase mt-0.5"
+                        style={{ background: labelColors.bg, color: labelColors.text }}>
+                        {plant.zone}
+                      </span>
                     </div>
                   </>
                 ) : (
@@ -104,7 +151,7 @@ export function PlantIndexPage() {
           })}
         </div>
 
-        {filteredPlants.length === 0 && (
+        {sortedPlants.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12"
             style={{ color: 'rgba(47,111,78,0.35)' }}>
             <SearchSlash size={48} className="mb-4 opacity-50" />
@@ -117,17 +164,13 @@ export function PlantIndexPage() {
       <AnimatePresence>
         {selectedPlant && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex items-end"
             style={{ background: 'rgba(38,52,47,0.65)', backdropFilter: 'blur(6px)' }}
             onClick={() => setSelectedPlant(null)}
           >
             <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="w-full max-w-[430px] mx-auto rounded-t-3xl overflow-hidden shadow-2xl"
               style={{ background: '#F6F1E7' }}
@@ -142,9 +185,9 @@ export function PlantIndexPage() {
                 >✕</button>
               </div>
               <div className="p-6 pb-12">
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
                   <span className="px-2 py-1 rounded text-xs font-bold uppercase"
-                    style={{ background: 'rgba(47,111,78,0.12)', color: '#2F6F4E' }}>
+                    style={{ background: ZONE_LABEL[selectedPlant.zone].bg, color: ZONE_LABEL[selectedPlant.zone].text }}>
                     Zone: {selectedPlant.zone}
                   </span>
                   {selectedPlant.tags.map(tag => (
