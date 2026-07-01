@@ -8,7 +8,7 @@ const ROBOFLOW_URL =
 
 router.post(
   "/classify-plant",
-  express.json({ limit: "15mb" }),
+  express.json({ limit: "50mb" }),
   async (req, res) => {
     const apiKey = process.env["ROBOFLOW_API_KEY"];
     if (!apiKey) {
