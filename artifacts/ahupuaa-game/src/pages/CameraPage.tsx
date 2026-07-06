@@ -103,7 +103,7 @@ function matchPlant(label: string | null) {
 type ScanState = "idle" | "scanning" | "flashing" | "classifying" | "done" | "unknown" | "error";
 
 export function CameraPage() {
-  const { collectPlant } = useGame();
+  const { collectPlant, incrementScanCount } = useGame();
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -211,8 +211,10 @@ export function CameraPage() {
       if (plant) {
         setFoundPlant(plant);
         setScanState("done");
+        incrementScanCount();
       } else {
         setScanState("unknown");
+        incrementScanCount();
       }
     } catch (err) {
       console.error("Roboflow error:", err);
