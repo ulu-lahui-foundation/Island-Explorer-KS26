@@ -7,7 +7,7 @@ export type WeeklyTask = {
   label: string;
   target: number;
   category: "login" | "collect" | "zone" | "plant" | "place" | "scan";
-  meta?: string; // zone name, plant id, etc.
+  meta?: string;
 };
 
 export type WeeklyStats = {
@@ -16,6 +16,7 @@ export type WeeklyStats = {
   plantsCollected: string[];
   plantsPlaced: number;
   scanCount: number;
+  rewardClaimed: boolean;
 };
 
 const TASK_TEMPLATES: Omit<WeeklyTask, "id">[] = [
@@ -33,8 +34,17 @@ const TASK_TEMPLATES: Omit<WeeklyTask, "id">[] = [
   { label: "Scan 3 plants", target: 3, category: "scan" },
 ];
 
-/* ── Helpers ── */
+/* ── Reward plant ── */
+export const WEEKLY_REWARD_PLANT: Plant = {
+  id: "limu",
+  name: "Limu",
+  tags: ["edible", "rare"],
+  zone: "kai",
+  image: "/plants/limu.png",
+  info: "Hawaiian seaweed. A rare ocean treasure that thrives along the reef edge in the Kai zone. Very hard to capture!",
+};
 
+/* ── Helpers ── */
 function getISOWeek(date = new Date()): number {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNum = d.getUTCDay() || 7;
@@ -48,7 +58,6 @@ export function getWeekKey(): string {
   return `${now.getFullYear()}-W${getISOWeek(now)}`;
 }
 
-/* Seeded shuffle — deterministic for a given week */
 function seededShuffle<T>(arr: T[], seed: number): T[] {
   const a = [...arr];
   let s = seed;
@@ -60,14 +69,11 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
   return a;
 }
 
-/* ── Generate this week’s tasks ── */
 export function getWeeklyTasks(): WeeklyTask[] {
   const week = getISOWeek();
   const year = new Date().getFullYear();
   const seed = year * 1000 + week;
   const shuffled = seededShuffle(TASK_TEMPLATES, seed);
-
-  // Pick 5 tasks, ensure variety — no duplicate categories if possible
   const picked: WeeklyTask[] = [];
   const usedCats = new Set<string>();
   for (const t of shuffled) {
@@ -80,7 +86,7 @@ export function getWeeklyTasks(): WeeklyTask[] {
   return picked;
 }
 
-/* ── LocalStorage stats ── */
+/* ── LocalStorage ── */
 const STORAGE_KEY = "ahupuaa-weekly-stats";
 
 export function loadWeeklyStats(): WeeklyStats {
@@ -92,14 +98,14 @@ export function loadWeeklyStats(): WeeklyStats {
       if (parsed.weekKey === weekKey) return parsed;
     }
   } catch { /* ignore */ }
-  return { weekKey, loginCount: 0, plantsCollected: [], plantsPlaced: 0, scanCount: 0 };
+  return { weekKey, loginCount: 0, plantsCollected: [], plantsPlaced: 0, scanCount: 0, rewardClaimed: false };
 }
 
 export function saveWeeklyStats(stats: WeeklyStats) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
 }
 
-/* ── Check completion ── */
+/* ── Completion checks ── */
 export function isTaskComplete(task: WeeklyTask, stats: WeeklyStats): boolean {
   switch (task.category) {
     case "login":   return stats.loginCount >= task.target;
@@ -115,7 +121,10 @@ export function isTaskComplete(task: WeeklyTask, stats: WeeklyStats): boolean {
   }
 }
 
-/* ── Progress for a single task ── */
+export function allTasksComplete(tasks: WeeklyTask[], stats: WeeklyStats): boolean {
+  return tasks.every(t => isTaskComplete(t, stats));
+}
+
 export function taskProgress(task: WeeklyTask, stats: WeeklyStats): { current: number; target: number } {
   switch (task.category) {
     case "login":   return { current: stats.loginCount, target: task.target };
@@ -137,8 +146,22 @@ export function taskProgress(task: WeeklyTask, stats: WeeklyStats): { current: n
   }
 }
 
-/* ── Mutations ── */
+/* ── Reward claim ── */
+export function claimReward(): boolean {
+  const tasks = getWeeklyTasks();
+  const stats = loadWeeklyStats();
+  if (!allTasksComplete(tasks, stats)) return false;
+  if (stats.rewardClaimed) return false;
+  stats.rewardClaimed = true;
+  saveWeeklyStats(stats);
+  return true;
+}
 
+export function isRewardClaimed(): boolean {
+  return loadWeeklyStats().rewardClaimed;
+}
+
+/* ── Mutations ── */
 export function recordLogin() {
   const stats = loadWeeklyStats();
   stats.loginCount++;
