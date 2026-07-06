@@ -1,10 +1,10 @@
 import { useGame, Zone, PLANT_DATABASE, Plant } from "@/lib/GameContext";
+import { useTheme } from "@/lib/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { Leaf } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-/** Deduplicate inventory by plant id, returning unique plants with a count */
 function deduplicateInventory(inventory: Plant[]): { plant: Plant; count: number }[] {
   const map = new Map<string, { plant: Plant; count: number }>();
   for (const p of inventory) {
@@ -17,8 +17,11 @@ function deduplicateInventory(inventory: Plant[]): { plant: Plant; count: number
 
 export function MapPage() {
   const { inventory, placedPlants, placePlant } = useGame();
+  const { darkMode } = useTheme();
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const { toast } = useToast();
+
+  const navBg = darkMode ? '#1A3828' : '#F6F1E7';
 
   const handleDragEnd = (event: any, info: any, plantId: string) => {
     const y = info.point.y;
@@ -33,7 +36,7 @@ export function MapPage() {
       const success = placePlant(plantId, targetZone);
       if (!success) {
         toast({
-          title: `You can't plant it there! 🌿`,
+          title: `You can't plant it there! \ud83c\udf3f`,
           description: `${plant?.name} lives in ${plant?.zone}.`,
           variant: "destructive"
         });
@@ -122,19 +125,15 @@ export function MapPage() {
         </div>
       </div>
 
-      {/* ── Inventory FAB + Tray ── */}
-      {/* The tray + button sit in a row just above the nav bar (bottom-20 = 80px nav height) */}
+      {/* Inventory FAB + Tray */}
       <div className="absolute bottom-20 left-0 right-0 flex items-end px-3 pb-2 pointer-events-none">
-
-        {/* Toggle button — bottom-left, always visible */}
         <button
           onClick={() => setInventoryOpen(o => !o)}
           className="relative shrink-0 w-14 h-14 rounded-2xl shadow-xl flex items-center justify-center pointer-events-auto z-20 transition-transform active:scale-95"
-          style={{ background: 'rgba(246,241,231,0.97)', border: '1.5px solid rgba(47,111,78,0.22)' }}
+          style={{ background: darkMode ? 'rgba(255,255,255,0.95)' : 'rgba(246,241,231,0.97)', border: '1.5px solid rgba(47,111,78,0.22)' }}
           aria-label="Toggle inventory"
         >
           <Leaf size={22} style={{ color: '#2F6F4E' }} />
-          {/* badge showing total unique plants in inventory */}
           {inventory.length > 0 && (
             <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full text-[11px] font-bold flex items-center justify-center"
               style={{ background: '#2F6F4E', color: '#F6F1E7' }}>
@@ -143,7 +142,6 @@ export function MapPage() {
           )}
         </button>
 
-        {/* Horizontal tray — slides in to the right of the button */}
         <AnimatePresence>
           {inventoryOpen && (
             <motion.div
@@ -154,13 +152,11 @@ export function MapPage() {
               transition={{ type: "spring", damping: 28, stiffness: 260 }}
               className="ml-2 pointer-events-auto overflow-hidden"
             >
-              <div
-                className="flex items-end gap-3 overflow-x-auto pb-1 pt-1 pr-2 hide-scrollbar"
-                style={{ maxWidth: 'calc(100vw - 80px)' }}
-              >
+              <div className="flex items-end gap-3 overflow-x-auto pb-1 pt-1 pr-2 hide-scrollbar"
+                style={{ maxWidth: 'calc(100vw - 80px)' }}>
                 {dedupedInventory.length === 0 ? (
                   <div className="h-14 px-4 flex items-center rounded-2xl text-sm font-medium whitespace-nowrap"
-                    style={{ background: 'rgba(246,241,231,0.92)', color: 'rgba(38,52,47,0.45)', border: '1.5px dashed rgba(47,111,78,0.25)' }}>
+                    style={{ background: navBg, color: 'rgba(38,52,47,0.45)', border: '1.5px dashed rgba(47,111,78,0.25)' }}>
                     No plants yet — go scan!
                   </div>
                 ) : (
@@ -174,12 +170,7 @@ export function MapPage() {
                       className="relative shrink-0 w-14 h-14 rounded-2xl overflow-hidden shadow-lg cursor-grab active:cursor-grabbing"
                       style={{ border: '2px solid rgba(47,111,78,0.25)' }}
                     >
-                      <img
-                        src={plant.image}
-                        alt={plant.name}
-                        className="w-full h-full object-cover pointer-events-none"
-                      />
-                      {/* Count badge */}
+                      <img src={plant.image} alt={plant.name} className="w-full h-full object-cover pointer-events-none" />
                       {count > 1 && (
                         <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center pointer-events-none"
                           style={{ background: 'rgba(47,111,78,0.90)', color: '#F6F1E7' }}>
