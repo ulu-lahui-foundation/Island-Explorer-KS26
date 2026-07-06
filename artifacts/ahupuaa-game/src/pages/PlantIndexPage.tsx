@@ -141,18 +141,23 @@ export function PlantIndexPage() {
                       style={{ background: 'linear-gradient(to top, rgba(20,40,28,0.80), transparent)' }} />
                   )}
 
-                  {/* Lock + label for undiscovered */}
+                  {/* Lock + label + preview for undiscovered */}
                   {!isFound && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <div
-                        className="flex flex-col items-center justify-center gap-2 px-5 py-4 rounded-2xl"
+                        className="flex flex-col items-center justify-center gap-2.5 px-5 py-4 rounded-2xl"
                         style={{
-                          background: 'rgba(246,241,231,0.72)',
-                          backdropFilter: 'blur(8px)',
-                          border: '1.5px solid rgba(47,111,78,0.15)',
+                          background: 'rgba(246,241,231,0.80)',
+                          backdropFilter: 'blur(10px)',
+                          border: '1.5px solid rgba(47,111,78,0.18)',
                         }}
                       >
-                        <Lock size={22} color="#2F6F4E" strokeWidth={2.5} />
+                        {/* Tiny preview of the hidden plant */}
+                        <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0"
+                          style={{ boxShadow: '0 2px 6px rgba(0,0,0,0.12)' }}>
+                          <img src={plant.image} alt="" aria-hidden className="w-full h-full object-cover" />
+                        </div>
+                        <Lock size={18} color="#2F6F4E" strokeWidth={2.5} />
                         <span className="font-bold text-sm" style={{ color: '#2F6F4E' }}>Not Found</span>
                       </div>
                     </div>
