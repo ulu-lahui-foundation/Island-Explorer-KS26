@@ -1,5 +1,4 @@
 import { GameProvider, useGame } from "@/lib/GameContext";
-import { ThemeProvider, useTheme } from "@/lib/ThemeContext";
 import { Navigation } from "@/components/Navigation";
 import { MapPage } from "@/pages/MapPage";
 import { CameraPage } from "@/pages/CameraPage";
@@ -13,7 +12,6 @@ import { AnimatePresence, motion } from "framer-motion";
 
 function MainApp() {
   const { currentView } = useGame();
-  const { darkMode } = useTheme();
 
   const renderView = () => {
     switch (currentView) {
@@ -29,7 +27,7 @@ function MainApp() {
   };
 
   return (
-    <div className={`w-full h-[100dvh] max-w-[430px] mx-auto bg-black relative overflow-hidden flex flex-col font-sans ${darkMode ? 'dark' : ''}`}>
+    <div className="w-full h-[100dvh] max-w-[430px] mx-auto bg-black relative overflow-hidden flex flex-col font-sans">
       <AnimatePresence mode="wait">
         <motion.div
           key={currentView}
@@ -49,12 +47,10 @@ function MainApp() {
 
 function App() {
   return (
-    <ThemeProvider>
-      <GameProvider>
-        <MainApp />
-        <Toaster />
-      </GameProvider>
-    </ThemeProvider>
+    <GameProvider>
+      <MainApp />
+      <Toaster />
+    </GameProvider>
   );
 }
 

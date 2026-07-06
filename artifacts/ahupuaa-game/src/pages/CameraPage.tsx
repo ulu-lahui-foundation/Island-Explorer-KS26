@@ -178,12 +178,6 @@ export function CameraPage() {
     setScanState("scanning");
     setDebugLabel(null);
 
-    /* track scan attempt for weekly tasks */
-    (async () => {
-      const { recordScan } = await import("@/lib/weeklyTasks");
-      recordScan();
-    })();
-
     await new Promise((r) => setTimeout(r, 1800));
 
     setScanState("flashing");

@@ -1,5 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { recordLogin, recordPlantCollected, recordPlantPlaced } from './weeklyTasks';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 export type Zone = 'uka' | 'kula' | 'kai';
 
@@ -16,7 +15,6 @@ export const PLANT_DATABASE: Plant[] = [
   { id: 'kukui', name: 'Kukui', tags: ['trees', 'edible'], zone: 'kula', image: '/plants/kukui.jpg', info: 'The Candlenut tree. Its nuts were used for light, oil, and medicine.' },
   { id: 'kalo', name: 'Kalo', tags: ['edible'], zone: 'kai', image: '/plants/kalo.jpg', info: 'Taro. A sacred staple food in Hawaiian culture representing family and ancestry.' },
   { id: 'ohia', name: 'ʻŌhiʻa Lehua', tags: ['trees', 'lei'], zone: 'uka', image: '/plants/ohia.jpg', info: 'ʻŌhiʻa Lehua. A vital forest tree that gathers rain and is sacred to Laka.' },
-  { id: 'limu', name: 'Limu', tags: ['edible', 'rare'], zone: 'kai', image: '/plants/limu.png', info: 'Hawaiian seaweed. A rare ocean treasure that thrives along the reef edge in the Kai zone.' },
 ];
 
 export type ViewState = 'ahupuaa' | 'camera' | 'piko' | 'plant_index' | 'tasks' | 'settings' | 'about';
@@ -49,7 +47,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setCollectedPlants(prev => [...prev, plant.id]);
     }
     setInventory(prev => [...prev, plant]);
-    recordPlantCollected(plant);
   };
 
   const placePlant = (plantId: string, zone: Zone) => {
@@ -57,16 +54,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (plant && plant.zone === zone) {
       setInventory(prev => prev.filter(p => p.id !== plantId));
       setPlacedPlants(prev => [...prev, { plantId, zone }]);
-      recordPlantPlaced();
       return true;
     }
     return false;
   };
-
-  /* Track app open as a login for weekly tasks */
-  useEffect(() => {
-    recordLogin();
-  }, []);
 
   return (
     <GameContext.Provider

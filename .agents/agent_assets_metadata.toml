@@ -1,8 +1,0 @@
-uploads = []
-outputs = []
-
-[[generated]]
-id = "VM2UJCFqKvWkhnzCHIIeU"
-uri = "file://artifacts/ahupuaa-game/public/plants/limu.png"
-type = "image"
-title = "Hawaiian limu seaweed"
