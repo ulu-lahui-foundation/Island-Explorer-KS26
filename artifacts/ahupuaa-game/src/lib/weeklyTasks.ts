@@ -40,7 +40,7 @@ const TASK_POOL: Omit<WeeklyTask, 'id' | 'current' | 'completed'>[] = [
   { type: 'login',       title: 'Log in 5 times',                  target: 5 },
   { type: 'place_zone',  title: 'Plant a tree in the Uka section', target: 1, zone: 'uka' },
   { type: 'scan_count',  title: 'Scan 5 plants',                  target: 5 },
-  { type: 'collect_plant', title: 'Collect Kukui',                target: 1, plantId: 'kukui' },
+  { type: 'login',       title: 'Log in 5 times',                  target: 5 },
   { type: 'collect_plant', title: 'Collect Kalo',                 target: 1, plantId: 'kalo' },
   { type: 'collect_plant', title: 'Collect \u02bb\u014chi\u02bba Lehua', target: 1, plantId: 'ohia' },
   { type: 'all_zones',   title: 'Plant in all 3 zones',            target: 1 },
