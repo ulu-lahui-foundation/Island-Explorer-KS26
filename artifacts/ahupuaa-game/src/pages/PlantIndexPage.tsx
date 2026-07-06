@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 /* ── Design tokens ── */
 const PAGE_BG     = '#F6F1E7';
-const CARD_BG     = '#EDE8DC';
+const CARD_BG     = 'rgba(237,232,220,0.38)';
 const ACTIVE_PILL = '#2F6F4E';
 
 const ZONE_BADGE: Record<string, { bg: string; text: string }> = {
@@ -130,9 +130,8 @@ export function PlantIndexPage() {
                     className="absolute inset-0 w-full h-full object-cover"
                     style={isFound
                       ? { opacity: 1 }
-                      /* Silhouette: turn every pixel black, keep very low opacity so
-                         the plant shape is hinted but completely unidentifiable */
-                      : { filter: 'brightness(0)', opacity: 0.14 }
+                      /* Clear black silhouette — shape visible but no colour detail */
+                      : { filter: 'brightness(0)', opacity: 0.60 }
                     }
                   />
 
