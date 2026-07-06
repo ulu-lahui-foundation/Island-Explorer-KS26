@@ -4,8 +4,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 /* ── Design tokens ── */
-const PAGE_BG   = '#1A3828';
-const CARD_BG   = '#1F4230';
+const PAGE_BG   = '#245238';
+const CARD_BG   = '#2A6042';
 const ACTIVE_PILL = '#5CC882';
 
 const ZONE_BADGE: Record<string, { bg: string; text: string }> = {
@@ -120,15 +120,15 @@ export function PlantIndexPage() {
                 {/* ── Card image area ── */}
                 <div
                   className="relative w-full aspect-square rounded-2xl overflow-hidden"
-                  style={{ background: CARD_BG }}
+                  style={{ background: CARD_BG, border: '2px solid rgba(255,255,255,0.10)', boxShadow: '0 6px 18px rgba(0,0,0,0.35)' }}
                 >
-                  {/* Plant image — full opacity if found, dimmed if not */}
+                  {/* Plant image — full opacity if found, dark-dimmed if not */}
                   <img
                     src={plant.image}
                     alt=""
                     aria-hidden
                     className="absolute inset-0 w-full h-full object-cover"
-                    style={{ opacity: isFound ? 1 : 0.28 }}
+                    style={{ opacity: isFound ? 1 : 0.14 }}
                   />
 
                   {/* Dark overlay for undiscovered */}
