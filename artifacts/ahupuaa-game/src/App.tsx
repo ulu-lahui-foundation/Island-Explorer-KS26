@@ -6,6 +6,7 @@ import { PikoPage } from "@/pages/PikoPage";
 import { PlantIndexPage } from "@/pages/PlantIndexPage";
 import { TasksPage } from "@/pages/TasksPage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { AboutPage } from "@/pages/AboutPage";
 import { Toaster } from "@/components/ui/toaster";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -20,6 +21,7 @@ function MainApp() {
       case 'plant_index': return <PlantIndexPage key="plant_index" />;
       case 'tasks': return <TasksPage key="tasks" />;
       case 'settings': return <SettingsPage key="settings" />;
+      case 'about': return <AboutPage key="about" />;
       default: return <MapPage key="default" />;
     }
   };

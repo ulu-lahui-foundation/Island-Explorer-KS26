@@ -1,7 +1,6 @@
 import { useGame } from "@/lib/GameContext";
-import { ArrowLeft, Volume2, Globe, Type } from "lucide-react";
+import { ArrowLeft, Volume2, Globe, Moon, Bell, Info } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
 
 const PAGE_BG = '#245238';
 const CARD_BG = '#2A6042';
@@ -9,6 +8,32 @@ const ACCENT  = '#5CC882';
 
 export function SettingsPage() {
   const { setCurrentView } = useGame();
+
+  const SettingRow = ({
+    icon: Icon,
+    label,
+    desc,
+    action,
+  }: {
+    icon: React.ElementType;
+    label: string;
+    desc: string;
+    action: React.ReactNode;
+  }) => (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full flex items-center justify-center"
+          style={{ background: 'rgba(255,255,255,0.10)', color: ACCENT }}>
+          <Icon size={20} />
+        </div>
+        <div>
+          <h3 className="font-bold text-white">{label}</h3>
+          <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>{desc}</p>
+        </div>
+      </div>
+      {action}
+    </div>
+  );
 
   return (
     <div className="w-full h-full flex flex-col" style={{ background: PAGE_BG }}>
@@ -29,71 +54,65 @@ export function SettingsPage() {
         </h1>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 pb-28 flex flex-col gap-6">
+      <div className="flex-1 overflow-y-auto p-4 pb-28 flex flex-col gap-5">
 
-        {/* Options card */}
-        <div className="rounded-2xl p-6 flex flex-col gap-8"
+        {/* Main options card */}
+        <div className="rounded-2xl p-6 flex flex-col gap-7"
           style={{ background: CARD_BG, border: '2px solid rgba(255,255,255,0.10)', boxShadow: '0 6px 18px rgba(0,0,0,0.30)' }}>
 
-          {/* Sound */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center"
+          <SettingRow
+            icon={Globe}
+            label="Language"
+            desc="English only"
+            action={
+              <span className="px-3 py-1 rounded-lg text-sm font-bold"
                 style={{ background: 'rgba(255,255,255,0.10)', color: ACCENT }}>
-                <Volume2 size={20} />
-              </div>
-              <div>
-                <h3 className="font-bold text-white">Sound Effects</h3>
-                <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>Play sounds on action</p>
-              </div>
-            </div>
-            <Switch defaultChecked />
-          </div>
+                EN
+              </span>
+            }
+          />
 
-          {/* Text Size */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{ background: 'rgba(255,255,255,0.10)', color: ACCENT }}>
-                <Type size={20} />
-              </div>
-              <div>
-                <h3 className="font-bold text-white">Text Size</h3>
-                <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>Adjust readability</p>
-              </div>
-            </div>
-            <div className="px-2">
-              <Slider defaultValue={[50]} max={100} step={50} />
-              <div className="flex justify-between text-xs font-bold mt-2"
-                style={{ color: 'rgba(255,255,255,0.35)' }}>
-                <span>A</span><span>A</span><span className="text-lg">A</span>
-              </div>
-            </div>
-          </div>
+          <SettingRow
+            icon={Moon}
+            label="Dark Mode"
+            desc="Always on in this version"
+            action={<Switch defaultChecked disabled />}
+          />
 
-          {/* Language */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{ background: 'rgba(255,255,255,0.10)', color: ACCENT }}>
-                <Globe size={20} />
-              </div>
-              <div>
-                <h3 className="font-bold text-white">Language</h3>
-                <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>English only</p>
-              </div>
-            </div>
-            <span className="px-3 py-1 rounded-lg text-sm font-bold"
-              style={{ background: 'rgba(255,255,255,0.10)', color: ACCENT }}>
-              EN
-            </span>
-          </div>
+          <SettingRow
+            icon={Bell}
+            label="Notifications"
+            desc="Reminders for daily scan"
+            action={<Switch />}
+          />
+
+          <SettingRow
+            icon={Volume2}
+            label="Sound"
+            desc="Play sounds on action"
+            action={<Switch defaultChecked />}
+          />
+
+          <SettingRow
+            icon={Info}
+            label="About Us"
+            desc="Learn about the app"
+            action={
+              <button
+                onClick={() => setCurrentView('about')}
+                className="text-sm font-bold px-3 py-1.5 rounded-lg transition-colors"
+                style={{ background: 'rgba(255,255,255,0.10)', color: ACCENT }}
+              >
+                Open
+              </button>
+            }
+          />
         </div>
 
         {/* Credits */}
-        <div className="text-center mt-2" style={{ color: 'rgba(255,255,255,0.35)' }}>
+        <div className="text-center mt-4" style={{ color: 'rgba(255,255,255,0.30)' }}>
           <p className="font-medium text-sm">Made with aloha for</p>
-          <p className="font-bold" style={{ color: 'rgba(255,255,255,0.50)' }}>Hawaiian ecology education</p>
+          <p className="font-bold" style={{ color: 'rgba(255,255,255,0.45)' }}>Hawaiian ecology education</p>
           <p className="text-xs mt-4">Version 1.0.0</p>
         </div>
       </div>

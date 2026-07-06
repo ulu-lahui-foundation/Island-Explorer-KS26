@@ -17,7 +17,7 @@ export const PLANT_DATABASE: Plant[] = [
   { id: 'ohia', name: 'ʻŌhiʻa Lehua', tags: ['trees', 'lei'], zone: 'uka', image: '/plants/ohia.jpg', info: 'ʻŌhiʻa Lehua. A vital forest tree that gathers rain and is sacred to Laka.' },
 ];
 
-export type ViewState = 'ahupuaa' | 'camera' | 'piko' | 'plant_index' | 'tasks' | 'settings';
+export type ViewState = 'ahupuaa' | 'camera' | 'piko' | 'plant_index' | 'tasks' | 'settings' | 'about';
 
 export type PlacedPlant = {
   plantId: string;
