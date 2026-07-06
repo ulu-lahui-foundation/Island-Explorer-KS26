@@ -143,14 +143,18 @@ export function PlantIndexPage() {
 
                   {/* Lock + label for undiscovered */}
                   {!isFound && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <div
-                        className="w-11 h-11 rounded-full flex items-center justify-center"
-                        style={{ background: 'rgba(47,111,78,0.15)', border: '1.5px solid rgba(47,111,78,0.25)' }}
+                        className="flex flex-col items-center justify-center gap-2 px-5 py-4 rounded-2xl"
+                        style={{
+                          background: 'rgba(246,241,231,0.72)',
+                          backdropFilter: 'blur(8px)',
+                          border: '1.5px solid rgba(47,111,78,0.15)',
+                        }}
                       >
-                        <Lock size={20} color="#2F6F4E" strokeWidth={2.5} />
+                        <Lock size={22} color="#2F6F4E" strokeWidth={2.5} />
+                        <span className="font-bold text-sm" style={{ color: '#2F6F4E' }}>Not Found</span>
                       </div>
-                      <span className="font-bold text-sm" style={{ color: '#2F6F4E' }}>Not Found</span>
                     </div>
                   )}
 
