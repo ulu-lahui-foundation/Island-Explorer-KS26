@@ -114,44 +114,73 @@ export function TasksPage() {
           onClick={handleClaim}
           className="rounded-2xl overflow-hidden relative"
           style={{
-            background: weeklyState.rewardClaimed ? t.rewardOpenBg : (allDone ? t.rewardOpenBg : t.rewardLockedBg),
-            border: `2px solid ${weeklyState.rewardClaimed ? t.rewardOpenBorder : (allDone ? '#5CC882' : t.rewardLockedBorder)}`,
-            boxShadow: '0 6px 18px rgba(0,0,0,0.20)',
+            background: darkMode
+              ? (weeklyState.rewardClaimed || allDone
+                  ? 'linear-gradient(135deg, #1B4D2E 0%, #245238 50%, #1B4D2E 100%)'
+                  : 'linear-gradient(135deg, #1A3A28 0%, #1D4A30 50%, #1A3A28 100%)')
+              : (weeklyState.rewardClaimed || allDone
+                  ? 'linear-gradient(135deg, #EAF5ED 0%, #F6F1E7 50%, #EAF5ED 100%)'
+                  : 'linear-gradient(135deg, #E8E4DB 0%, #F0EDE5 50%, #E8E4DB 100%)'),
+            border: `3px solid ${weeklyState.rewardClaimed ? '#5CC882' : (allDone ? '#5CC882' : darkMode ? 'rgba(255,215,0,0.25)' : 'rgba(184,134,11,0.30)')}`,
+            boxShadow: allDone && !weeklyState.rewardClaimed
+              ? '0 0 24px rgba(92,200,130,0.35), 0 6px 18px rgba(0,0,0,0.25)'
+              : '0 6px 18px rgba(0,0,0,0.20)',
             cursor: allDone && !weeklyState.rewardClaimed ? 'pointer' : 'default',
           }}
         >
-          {/* Glow ring when ready */}
+          {/* Animated shimmer overlay when ready */}
           {allDone && !weeklyState.rewardClaimed && (
             <motion.div
               className="absolute inset-0 rounded-2xl"
-              animate={{ opacity: [0.3, 0.6, 0.3] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-              style={{ boxShadow: 'inset 0 0 20px rgba(92,200,130,0.4)' }}
+              style={{
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent)',
+                backgroundSize: '200% 100%',
+              }}
+              animate={{ backgroundPosition: ['200% 0', '-200% 0'] }}
+              transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
             />
           )}
 
-          <div className="p-4 flex items-center gap-4 relative z-10">
-            {/* Left: icon or revealed plant image */}
+          {/* Outer glow ring when ready */}
+          {allDone && !weeklyState.rewardClaimed && (
+            <motion.div
+              className="absolute inset-0 rounded-2xl pointer-events-none"
+              animate={{ opacity: [0.4, 0.8, 0.4] }}
+              transition={{ repeat: Infinity, duration: 2 }}
+              style={{ boxShadow: 'inset 0 0 30px rgba(92,200,130,0.25)' }}
+            />
+          )}
+
+          <div className="p-5 flex items-center gap-4 relative z-10">
+            {/* Left: icon with golden circle bg */}
             {weeklyState.rewardClaimed ? (
-              <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0">
+              <div className="w-16 h-16 rounded-2xl overflow-hidden shrink-0"
+                style={{ boxShadow: `0 0 0 3px #5CC882, 0 0 0 5px ${darkMode ? '#245238' : '#F6F1E7'}` }}>
                 {limu && <img src={limu.image} alt={limu.name} className="w-full h-full object-cover" />}
               </div>
             ) : (
               <div
-                className="w-16 h-16 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: allDone ? 'rgba(92,200,130,0.15)' : 'rgba(0,0,0,0.08)' }}
+                className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0"
+                style={{
+                  background: allDone
+                    ? 'linear-gradient(135deg, rgba(92,200,130,0.25), rgba(92,200,130,0.10))'
+                    : darkMode
+                      ? 'linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,215,0,0.04))'
+                      : 'linear-gradient(135deg, rgba(184,134,11,0.12), rgba(184,134,11,0.04))',
+                  border: `2px solid ${allDone ? 'rgba(92,200,130,0.35)' : darkMode ? 'rgba(255,215,0,0.15)' : 'rgba(184,134,11,0.20)'}`,
+                }}
               >
                 {allDone
-                  ? <Gift size={28} style={{ color: '#5CC882' }} />
-                  : <Lock size={24} style={{ color: darkMode ? 'rgba(255,255,255,0.25)' : 'rgba(38,52,47,0.25)' }} />
+                  ? <Gift size={30} style={{ color: '#5CC882' }} />
+                  : <Lock size={26} style={{ color: darkMode ? 'rgba(255,215,0,0.50)' : 'rgba(184,134,11,0.50)' }} />
                 }
               </div>
             )}
 
             {/* Center: text */}
             <div className="flex-1 min-w-0">
-              <span className="text-xs font-bold uppercase tracking-wider block mb-1"
-                style={{ color: allDone ? t.accent : t.muted }}>
+              <span className="text-xs font-extrabold uppercase tracking-widest block mb-1"
+                style={{ color: allDone ? '#5CC882' : darkMode ? 'rgba(255,215,0,0.70)' : 'rgba(184,134,11,0.70)' }}>
                 Weekly Reward
               </span>
 
@@ -162,10 +191,10 @@ export function TasksPage() {
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                   >
-                    <span className="text-base font-extrabold block" style={{ color: t.text }}>
+                    <span className="text-lg font-extrabold block" style={{ color: t.text }}>
                       {limu.name}
                     </span>
-                    <span className="text-xs font-medium" style={{ color: t.sub }}>
+                    <span className="text-xs font-semibold" style={{ color: t.sub }}>
                       Collected! Check your Plant Index.
                     </span>
                   </motion.div>
@@ -175,10 +204,10 @@ export function TasksPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                   >
-                    <span className="text-base font-extrabold block" style={{ color: t.text }}>
+                    <span className="text-lg font-extrabold block" style={{ color: t.text }}>
                       Mystery Plant
                     </span>
-                    <span className="text-xs font-medium" style={{ color: t.sub }}>
+                    <span className="text-xs font-semibold" style={{ color: t.sub }}>
                       {allDone
                         ? 'Tap to reveal your reward!'
                         : `Complete all ${weeklyState.tasks.length} tasks to unlock`
@@ -189,14 +218,14 @@ export function TasksPage() {
               </AnimatePresence>
             </div>
 
-            {/* Right: sparkle or nothing */}
+            {/* Right: animated sparkle when ready */}
             {allDone && !weeklyState.rewardClaimed && (
               <motion.div
                 className="shrink-0"
-                animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.2, 1] }}
-                transition={{ repeat: Infinity, duration: 1.5 }}
+                animate={{ rotate: [0, 20, -20, 0], scale: [1, 1.3, 1] }}
+                transition={{ repeat: Infinity, duration: 1.2 }}
               >
-                <Sparkles size={22} style={{ color: '#5CC882' }} />
+                <Sparkles size={28} style={{ color: '#5CC882' }} />
               </motion.div>
             )}
           </div>
