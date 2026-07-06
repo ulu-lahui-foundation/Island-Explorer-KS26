@@ -1,7 +1,7 @@
 import { useRef, useState, useCallback } from "react";
 import { useGame, PLANT_DATABASE, Plant } from "@/lib/GameContext";
 import { PLANT_ALIASES } from "@/lib/plantData";
-import { ArrowLeft, Camera as CameraIcon, Check, RefreshCw, Zap } from "lucide-react";
+import { Camera as CameraIcon, Check, RefreshCw, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ---------------------------------------------------------------------------
@@ -197,13 +197,7 @@ export function CameraPage() {
 
       {/* Top bar */}
       <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-4 pt-12 pb-4 bg-gradient-to-b from-black/50 to-transparent">
-        <button
-          onClick={closeResult}
-          className="w-9 h-9 rounded-full flex items-center justify-center"
-          style={{ background: 'rgba(20,40,28,0.55)', backdropFilter: 'blur(8px)' }}
-        >
-          <ArrowLeft size={18} color="#fff" />
-        </button>
+        <div className="w-9 h-9" />
         <span className="font-bold text-sm text-white/80">Scan a Plant</span>
         <button
           onClick={flipCamera}
@@ -217,21 +211,21 @@ export function CameraPage() {
       {/* ── Tall corner brackets + scanning line ── */}
       {cameraReady && scanState === "idle" && (
         <>
-          {/* Corner brackets — span full height */}
-          <div className="absolute inset-y-0 left-5 flex flex-col justify-center z-10">
+          {/* Corner brackets — taller gap, moved inward toward centre */}
+          <div className="absolute inset-y-0 left-10 flex flex-col justify-center z-10">
             <div className="w-8 h-8 border-l-4 border-t-4 rounded-tl-lg border-[#5CC882]" />
-            <div className="h-48" />
+            <div className="h-72" />
             <div className="w-8 h-8 border-l-4 border-b-4 rounded-bl-lg border-[#5CC882]" />
           </div>
-          <div className="absolute inset-y-0 right-5 flex flex-col justify-center z-10">
+          <div className="absolute inset-y-0 right-10 flex flex-col justify-center z-10">
             <div className="w-8 h-8 border-r-4 border-t-4 rounded-tr-lg border-[#5CC882]" />
-            <div className="h-48" />
+            <div className="h-72" />
             <div className="w-8 h-8 border-r-4 border-b-4 rounded-br-lg border-[#5CC882]" />
           </div>
 
           {/* Sweeping scan line — animate between brackets */}
           <motion.div
-            className="absolute left-5 right-5 h-0.5 bg-[#5CC882]/60 rounded-full z-10"
+            className="absolute left-10 right-10 h-0.5 bg-[#5CC882]/60 rounded-full z-10"
             initial={{ top: '20%' }}
             animate={{ top: ['20%', '80%', '20%'] }}
             transition={{ duration: 3, ease: 'easeInOut', repeat: Infinity }}
@@ -243,10 +237,8 @@ export function CameraPage() {
       {cameraReady && scanState === "idle" && (
         <button
           onClick={takeSnapshot}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 w-20 h-20 rounded-full bg-[#5CC882] flex items-center justify-center shadow-lg active:scale-95 transition-transform"
-        >
-          <CameraIcon size={32} color="#1A3828" />
-        </button>
+          className="absolute bottom-28 left-1/2 -translate-x-1/2 z-20 w-20 h-20 rounded-full bg-white shadow-lg active:scale-95 transition-transform"
+        />
       )}
 
       {/* Flash overlay */}
