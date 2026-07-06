@@ -23,6 +23,7 @@ export type WeeklyState = {
   scanCount: number;
   tasks: WeeklyTask[];
   rewardClaimed: boolean;
+  poolHash: string;
 };
 
 const STORAGE_KEY = 'ahupuaa_weekly_tasks';
@@ -47,6 +48,15 @@ const TASK_POOL: Omit<WeeklyTask, 'id' | 'current' | 'completed'>[] = [
   { type: 'login',       title: 'Log in to game 5 Times',           target: 5 },
 ];
 
+function getPoolHash(): string {
+  const titles = TASK_POOL.map(t => `${t.type}:${t.title}:${t.target}`).join('|');
+  let hash = 0;
+  for (let i = 0; i < titles.length; i++) {
+    hash = ((hash << 5) - hash + titles.charCodeAt(i)) | 0;
+  }
+  return String(Math.abs(hash));
+}
+
 function generateTasks(): WeeklyTask[] {
   const shuffled = [...TASK_POOL].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, 5).map((t, i) => ({
@@ -59,11 +69,12 @@ function generateTasks(): WeeklyTask[] {
 
 export function loadWeeklyState(): WeeklyState {
   const currentWeek = getWeekStart();
+  const currentHash = getPoolHash();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as WeeklyState;
-      if (parsed.weekStart === currentWeek) return parsed;
+      if (parsed.weekStart === currentWeek && parsed.poolHash === currentHash) return parsed;
     }
   } catch {}
   return {
@@ -72,6 +83,7 @@ export function loadWeeklyState(): WeeklyState {
     scanCount: 0,
     tasks: generateTasks(),
     rewardClaimed: false,
+    poolHash: currentHash,
   };
 }
 
