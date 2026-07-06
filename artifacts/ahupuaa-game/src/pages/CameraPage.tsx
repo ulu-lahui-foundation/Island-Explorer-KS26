@@ -211,23 +211,24 @@ export function CameraPage() {
       {/* ── Tall corner brackets + scanning line ── */}
       {cameraReady && scanState === "idle" && (
         <>
-          {/* Corner brackets — taller gap, moved inward toward centre */}
-          <div className="absolute inset-y-0 left-10 flex flex-col justify-center z-10">
-            <div className="w-8 h-8 border-l-4 border-t-4 rounded-tl-lg border-[#5CC882]" />
-            <div className="h-72" />
-            <div className="w-8 h-8 border-l-4 border-b-4 rounded-bl-lg border-[#5CC882]" />
-          </div>
-          <div className="absolute inset-y-0 right-10 flex flex-col justify-center z-10">
-            <div className="w-8 h-8 border-r-4 border-t-4 rounded-tr-lg border-[#5CC882]" />
-            <div className="h-72" />
-            <div className="w-8 h-8 border-r-4 border-b-4 rounded-br-lg border-[#5CC882]" />
+          {/* Corner brackets — compact frame, clear of UI */}
+          <div className="absolute top-24 bottom-36 left-10 right-10 flex flex-col justify-center z-10">
+            <div className="flex justify-between">
+              <div className="w-6 h-6 border-l-2 border-t-2 rounded-tl-md border-[#5CC882]" />
+              <div className="w-6 h-6 border-r-2 border-t-2 rounded-tr-md border-[#5CC882]" />
+            </div>
+            <div className="flex-1" />
+            <div className="flex justify-between">
+              <div className="w-6 h-6 border-l-2 border-b-2 rounded-bl-md border-[#5CC882]" />
+              <div className="w-6 h-6 border-r-2 border-b-2 rounded-br-md border-[#5CC882]" />
+            </div>
           </div>
 
-          {/* Sweeping scan line — animate between brackets */}
+          {/* Sweeping scan line — animate inside the frame */}
           <motion.div
             className="absolute left-10 right-10 h-0.5 bg-[#5CC882]/60 rounded-full z-10"
-            initial={{ top: '20%' }}
-            animate={{ top: ['20%', '80%', '20%'] }}
+            initial={{ top: '28%' }}
+            animate={{ top: ['28%', '72%', '28%'] }}
             transition={{ duration: 3, ease: 'easeInOut', repeat: Infinity }}
           />
         </>
