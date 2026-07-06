@@ -1,11 +1,9 @@
 import { useGame, PLANT_DATABASE } from "@/lib/GameContext";
 import { ArrowLeft, CheckCircle2, Circle, CalendarDays, Gift, Sparkles, Lock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
 
 export function TasksPage() {
   const { setCurrentView, weeklyState, darkMode, claimWeeklyReward } = useGame();
-  const [rewardRevealed, setRewardRevealed] = useState(false);
 
   const completedCount = weeklyState.tasks.filter(t => t.completed).length;
   const allDone = completedCount === weeklyState.tasks.length;
@@ -63,7 +61,6 @@ export function TasksPage() {
   const handleClaim = () => {
     if (!allDone || weeklyState.rewardClaimed) return;
     claimWeeklyReward();
-    setRewardRevealed(true);
   };
 
   const limu = PLANT_DATABASE.find(p => p.id === 'limu');
@@ -71,7 +68,7 @@ export function TasksPage() {
   return (
     <div className="w-full h-full flex flex-col" style={{ background: t.bg }}>
 
-      {/* Header */}
+      {/* ── Header + Reward (pinned above scroll) ── */}
       <div className="px-4 pt-10 pb-4" style={{ background: t.bg }}>
         <button
           onClick={() => setCurrentView('piko')}
@@ -98,7 +95,8 @@ export function TasksPage() {
           {completedCount} / {weeklyState.tasks.length} completed
         </p>
 
-        <div className="w-full h-3 rounded-full overflow-hidden" style={{ background: t.barBg }}>
+        {/* Progress bar */}
+        <div className="w-full h-3 rounded-full overflow-hidden mb-4" style={{ background: t.barBg }}>
           <motion.div
             className="h-full rounded-full"
             style={{ background: t.accent }}
@@ -107,15 +105,12 @@ export function TasksPage() {
             transition={{ duration: 0.8, ease: "easeOut" }}
           />
         </div>
-      </div>
 
-      <div className="flex-1 overflow-y-auto p-4 pb-28 flex flex-col gap-4">
-
-        {/* ── Weekly Reward Card ── */}
+        {/* ── Weekly Reward Card (horizontal, right under the bar) ── */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.15 }}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
           onClick={handleClaim}
           className="rounded-2xl overflow-hidden relative"
           style={{
@@ -135,8 +130,8 @@ export function TasksPage() {
             />
           )}
 
-          <div className="p-5 flex items-center gap-4 relative z-10">
-            {/* Gift icon or revealed plant image */}
+          <div className="p-4 flex items-center gap-4 relative z-10">
+            {/* Left: icon or revealed plant image */}
             {weeklyState.rewardClaimed ? (
               <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0">
                 {limu && <img src={limu.image} alt={limu.name} className="w-full h-full object-cover" />}
@@ -153,6 +148,7 @@ export function TasksPage() {
               </div>
             )}
 
+            {/* Center: text */}
             <div className="flex-1 min-w-0">
               <span className="text-xs font-bold uppercase tracking-wider block mb-1"
                 style={{ color: allDone ? t.accent : t.muted }}>
@@ -163,11 +159,10 @@ export function TasksPage() {
                 {weeklyState.rewardClaimed && limu ? (
                   <motion.div
                     key="revealed"
-                    initial={{ opacity: 0, y: 6 }}
+                    initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
                   >
-                    <span className="text-lg font-extrabold block" style={{ color: t.text }}>
+                    <span className="text-base font-extrabold block" style={{ color: t.text }}>
                       {limu.name}
                     </span>
                     <span className="text-xs font-medium" style={{ color: t.sub }}>
@@ -179,9 +174,8 @@ export function TasksPage() {
                     key="mystery"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
                   >
-                    <span className="text-lg font-extrabold block" style={{ color: t.text }}>
+                    <span className="text-base font-extrabold block" style={{ color: t.text }}>
                       Mystery Plant
                     </span>
                     <span className="text-xs font-medium" style={{ color: t.sub }}>
@@ -195,9 +189,10 @@ export function TasksPage() {
               </AnimatePresence>
             </div>
 
-            {/* Sparkle when ready */}
+            {/* Right: sparkle or nothing */}
             {allDone && !weeklyState.rewardClaimed && (
               <motion.div
+                className="shrink-0"
                 animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.2, 1] }}
                 transition={{ repeat: Infinity, duration: 1.5 }}
               >
@@ -206,14 +201,16 @@ export function TasksPage() {
             )}
           </div>
         </motion.div>
+      </div>
 
-        {/* ── Task cards ── */}
+      {/* ── Task cards (scrollable list below) ── */}
+      <div className="flex-1 overflow-y-auto p-4 pb-28 flex flex-col gap-3">
         {weeklyState.tasks.map((task, i) => (
           <motion.div
             key={task.id}
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.08 + 0.2 }}
+            transition={{ delay: i * 0.08 }}
             className="p-4 rounded-2xl flex items-center gap-4"
             style={task.completed
               ? { background: t.cardDoneBg,   border: `2px solid ${t.cardDoneBorder}`,   boxShadow: t.cardDoneShadow }
