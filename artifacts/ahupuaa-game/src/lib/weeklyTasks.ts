@@ -44,7 +44,7 @@ const TASK_POOL: Omit<WeeklyTask, 'id' | 'current' | 'completed'>[] = [
   { type: 'collect_plant', title: 'Collect Kalo',                 target: 1, plantId: 'kalo' },
   { type: 'collect_plant', title: 'Collect \u02bb\u014chi\u02bba Lehua', target: 1, plantId: 'ohia' },
   { type: 'all_zones',   title: 'Plant in all 3 zones',            target: 1 },
-  { type: 'collect_any', title: 'Collect 2 plants',                target: 2 },
+  { type: 'login',       title: 'Log in to game 5 Times',           target: 5 },
 ];
 
 function generateTasks(): WeeklyTask[] {
