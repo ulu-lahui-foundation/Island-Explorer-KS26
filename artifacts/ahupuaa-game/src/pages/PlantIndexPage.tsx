@@ -4,19 +4,19 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 /* ── Design tokens ── */
-const PAGE_BG   = '#1A3828';
-const CARD_BG   = '#1F4230';
-const ACTIVE_PILL = '#5CC882';
+const PAGE_BG     = '#F6F1E7';
+const CARD_BG     = '#EDE8DC';
+const ACTIVE_PILL = '#2F6F4E';
 
 const ZONE_BADGE: Record<string, { bg: string; text: string }> = {
-  uka:  { bg: '#8BC34A', text: '#1A3828' },
-  kula: { bg: '#5CC882', text: '#1A3828' },
-  kai:  { bg: '#29B5E8', text: '#1A3828' },
+  uka:  { bg: '#4a7c3f', text: '#ffffff' },
+  kula: { bg: '#7B4F2E', text: '#ffffff' },
+  kai:  { bg: '#29B5E8', text: '#ffffff' },
 };
 
 const ZONE_DETAIL: Record<string, { bg: string; text: string }> = {
-  uka:  { bg: '#8BC34A', text: '#1A3828' },
-  kula: { bg: '#5CC882', text: '#1A3828' },
+  uka:  { bg: '#4a7c3f', text: '#ffffff' },
+  kula: { bg: '#7B4F2E', text: '#ffffff' },
   kai:  { bg: '#29B5E8', text: '#ffffff' },
 };
 
@@ -43,39 +43,39 @@ export function PlantIndexPage() {
     <div className="w-full h-full flex flex-col overflow-hidden" style={{ background: PAGE_BG }}>
 
       {/* ── Header ── */}
-      <div className="px-4 pt-10 pb-3" style={{ background: PAGE_BG }}>
+      <div className="px-4 pt-10 pb-3" style={{ background: PAGE_BG, borderBottom: '1px solid rgba(47,111,78,0.12)' }}>
 
         {/* Back */}
         <button
           onClick={() => setCurrentView('piko')}
           className="flex items-center gap-1 mb-5 text-sm font-bold"
-          style={{ color: 'rgba(255,255,255,0.55)' }}
+          style={{ color: '#2F6F4E' }}
         >
           <ArrowLeft size={16} />
           Back
         </button>
 
         {/* Title + count */}
-        <h1 className="text-4xl font-extrabold leading-tight mb-0.5 text-white">
+        <h1 className="text-4xl font-extrabold leading-tight mb-0.5" style={{ color: '#26342F' }}>
           Plant Index
         </h1>
-        <p className="text-sm font-semibold mb-4" style={{ color: 'rgba(255,255,255,0.45)' }}>
+        <p className="text-sm font-semibold mb-4" style={{ color: 'rgba(38,52,47,0.45)' }}>
           {discovered} / {total} discovered
         </p>
 
         {/* Search */}
         <div className="relative mb-4">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2"
-            style={{ color: 'rgba(255,255,255,0.35)' }} />
+            style={{ color: 'rgba(47,111,78,0.45)' }} />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search plants…"
             className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
             style={{
-              background: 'rgba(255,255,255,0.10)',
-              color: '#fff',
-              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'rgba(47,111,78,0.09)',
+              color: '#26342F',
+              border: '1px solid rgba(47,111,78,0.14)',
             }}
           />
         </div>
@@ -88,9 +88,9 @@ export function PlantIndexPage() {
               onClick={() => setFilter(f)}
               className="px-4 py-1.5 rounded-full text-sm font-bold transition-all"
               style={filter === f
-                ? { background: ACTIVE_PILL, color: '#1A3828' }
-                : { background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.80)',
-                    border: '1px solid rgba(255,255,255,0.15)' }
+                ? { background: ACTIVE_PILL, color: '#F6F1E7', boxShadow: '0 2px 8px rgba(47,111,78,0.25)' }
+                : { background: 'rgba(47,111,78,0.08)', color: '#26342F',
+                    border: '1px solid rgba(47,111,78,0.16)' }
               }
             >
               {f}
@@ -122,40 +122,40 @@ export function PlantIndexPage() {
                   className="relative w-full aspect-square rounded-2xl overflow-hidden"
                   style={{ background: CARD_BG }}
                 >
-                  {/* Plant image — full opacity if found, dimmed if not */}
+                  {/* Plant image */}
                   <img
                     src={plant.image}
                     alt=""
                     aria-hidden
                     className="absolute inset-0 w-full h-full object-cover"
-                    style={{ opacity: isFound ? 1 : 0.28 }}
+                    style={isFound
+                      ? { opacity: 1 }
+                      /* Silhouette: turn every pixel black, keep very low opacity so
+                         the plant shape is hinted but completely unidentifiable */
+                      : { filter: 'brightness(0)', opacity: 0.14 }
+                    }
                   />
 
-                  {/* Dark overlay for undiscovered */}
-                  {!isFound && (
-                    <div className="absolute inset-0" style={{ background: 'rgba(20,45,30,0.55)' }} />
-                  )}
-
-                  {/* Dark gradient for found cards */}
+                  {/* Gradient for found cards */}
                   {isFound && (
                     <div className="absolute inset-x-0 bottom-0 h-1/2"
-                      style={{ background: 'linear-gradient(to top, rgba(10,25,18,0.80), transparent)' }} />
+                      style={{ background: 'linear-gradient(to top, rgba(20,40,28,0.80), transparent)' }} />
                   )}
 
-                  {/* Lock icon + "Not Found" label */}
+                  {/* Lock + label for undiscovered */}
                   {!isFound && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
                       <div
                         className="w-11 h-11 rounded-full flex items-center justify-center"
-                        style={{ background: 'rgba(255,255,255,0.18)' }}
+                        style={{ background: 'rgba(47,111,78,0.15)', border: '1.5px solid rgba(47,111,78,0.25)' }}
                       >
-                        <Lock size={20} color="white" strokeWidth={2.5} />
+                        <Lock size={20} color="#2F6F4E" strokeWidth={2.5} />
                       </div>
-                      <span className="text-white font-bold text-sm">Not Found</span>
+                      <span className="font-bold text-sm" style={{ color: '#2F6F4E' }}>Not Found</span>
                     </div>
                   )}
 
-                  {/* Zone badge — bottom-left of card */}
+                  {/* Zone badge — bottom-left */}
                   <span
                     className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full text-[11px] font-bold capitalize"
                     style={{ background: badge.bg, color: badge.text }}
@@ -168,13 +168,13 @@ export function PlantIndexPage() {
                 <div className="px-1">
                   {isFound ? (
                     <>
-                      <p className="text-white font-bold text-sm leading-tight truncate">{plant.name}</p>
-                      <p className="text-xs capitalize" style={{ color: 'rgba(255,255,255,0.45)' }}>{firstTag}</p>
+                      <p className="font-bold text-sm leading-tight truncate" style={{ color: '#26342F' }}>{plant.name}</p>
+                      <p className="text-xs capitalize" style={{ color: 'rgba(38,52,47,0.50)' }}>{firstTag}</p>
                     </>
                   ) : (
                     <>
-                      <p className="font-bold text-sm" style={{ color: 'rgba(255,255,255,0.60)' }}>???</p>
-                      <p className="text-xs capitalize" style={{ color: 'rgba(255,255,255,0.35)' }}>{firstTag}</p>
+                      <p className="font-bold text-sm" style={{ color: 'rgba(38,52,47,0.40)' }}>???</p>
+                      <p className="text-xs capitalize" style={{ color: 'rgba(38,52,47,0.30)' }}>{firstTag}</p>
                     </>
                   )}
                 </div>
@@ -185,7 +185,7 @@ export function PlantIndexPage() {
 
         {filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20"
-            style={{ color: 'rgba(255,255,255,0.30)' }}>
+            style={{ color: 'rgba(38,52,47,0.30)' }}>
             <Search size={44} className="mb-4" />
             <p className="font-semibold">No plants found</p>
           </div>
