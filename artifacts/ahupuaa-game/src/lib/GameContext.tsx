@@ -16,6 +16,7 @@ export const PLANT_DATABASE: Plant[] = [
   { id: 'kukui', name: 'Kukui', tags: ['trees', 'edible'], zone: 'kula', image: '/plants/kukui.jpg', info: 'The Candlenut tree. Its nuts were used for light, oil, and medicine.' },
   { id: 'kalo', name: 'Kalo', tags: ['edible'], zone: 'kai', image: '/plants/kalo.jpg', info: 'Taro. A sacred staple food in Hawaiian culture representing family and ancestry.' },
   { id: 'ohia', name: '\u02bb\u014chi\u02bba Lehua', tags: ['trees', 'lei'], zone: 'uka', image: '/plants/ohia.jpg', info: '\u02bb\u014chi\u02bba Lehua. A vital forest tree that gathers rain and is sacred to Laka.' },
+  { id: 'limu', name: 'Limu', tags: ['edible'], zone: 'kai', image: '/plants/limu.jpg', info: 'Edible seaweed. A vital part of traditional Hawaiian diet gathered from the ocean.' },
 ];
 
 export type ViewState = 'ahupuaa' | 'camera' | 'piko' | 'plant_index' | 'tasks' | 'settings' | 'about';
@@ -37,6 +38,7 @@ interface GameContextType {
   toggleDarkMode: () => void;
   weeklyState: WeeklyState;
   incrementScanCount: () => void;
+  claimWeeklyReward: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -49,7 +51,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [darkMode, setDarkMode] = useState(true);
   const [weeklyState, setWeeklyState] = useState<WeeklyState>(() => loadWeeklyState());
 
-  /* ── Weekly tasks: login count + re-check completion ── */
+  /* Weekly tasks: login count + re-check completion */
   useEffect(() => {
     setWeeklyState(prev => {
       const incremented = { ...prev, loginCount: prev.loginCount + 1 };
@@ -60,7 +62,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ── Re-check tasks whenever game state changes ── */
+  /* Re-check tasks whenever game state changes */
   useEffect(() => {
     setWeeklyState(prev => {
       const checked = checkTasks(prev, collectedPlants, placedPlants);
@@ -98,6 +100,23 @@ export function GameProvider({ children }: { children: ReactNode }) {
     });
   }, [collectedPlants, placedPlants]);
 
+  const claimWeeklyReward = useCallback(() => {
+    const limu = PLANT_DATABASE.find(p => p.id === 'limu');
+    if (!limu) return;
+
+    setCollectedPlants(prev => {
+      const next = prev.includes('limu') ? prev : [...prev, 'limu'];
+      return next;
+    });
+    setInventory(prev => [...prev, limu]);
+
+    setWeeklyState(prev => {
+      const next = { ...prev, rewardClaimed: true };
+      saveWeeklyState(next);
+      return next;
+    });
+  }, []);
+
   return (
     <GameContext.Provider
       value={{
@@ -112,6 +131,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         toggleDarkMode,
         weeklyState,
         incrementScanCount,
+        claimWeeklyReward,
       }}
     >
       {children}

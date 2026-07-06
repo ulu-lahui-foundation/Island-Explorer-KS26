@@ -22,6 +22,7 @@ export type WeeklyState = {
   loginCount: number;
   scanCount: number;
   tasks: WeeklyTask[];
+  rewardClaimed: boolean;
 };
 
 const STORAGE_KEY = 'ahupuaa_weekly_tasks';
@@ -70,6 +71,7 @@ export function loadWeeklyState(): WeeklyState {
     loginCount: 0,
     scanCount: 0,
     tasks: generateTasks(),
+    rewardClaimed: false,
   };
 }
 
@@ -84,7 +86,6 @@ export function checkTasks(
 ): WeeklyState {
   const updatedTasks = state.tasks.map(task => {
     let current = task.current;
-    let completed = false;
 
     switch (task.type) {
       case 'login':
@@ -107,8 +108,7 @@ export function checkTasks(
         break;
     }
 
-    completed = current >= task.target;
-    return { ...task, current, completed };
+    return { ...task, current, completed: current >= task.target };
   });
 
   return { ...state, tasks: updatedTasks };
