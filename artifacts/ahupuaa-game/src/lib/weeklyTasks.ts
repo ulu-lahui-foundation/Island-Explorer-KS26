@@ -37,7 +37,7 @@ function getWeekStart(): string {
 }
 
 const TASK_POOL: Omit<WeeklyTask, 'id' | 'current' | 'completed'>[] = [
-  { type: 'login',       title: 'Log in 4 times',                  target: 4 },
+  { type: 'login',       title: 'Log in 5 times',                  target: 5 },
   { type: 'place_zone',  title: 'Plant a tree in the Uka section', target: 1, zone: 'uka' },
   { type: 'scan_count',  title: 'Scan 5 plants',                  target: 5 },
   { type: 'collect_plant', title: 'Collect Kukui',                target: 1, plantId: 'kukui' },
