@@ -26,7 +26,7 @@ export type WeeklyState = {
   poolHash: string;
 };
 
-const STORAGE_KEY = 'ahupuaa_weekly_tasks';
+const STORAGE_KEY = 'ahupuaa_weekly_tasks_v2';
 
 function getWeekStart(): string {
   const d = new Date();
