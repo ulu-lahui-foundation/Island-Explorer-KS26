@@ -1,8 +1,10 @@
 import { Map, Camera, Target } from "lucide-react";
 import { useGame } from "@/lib/GameContext";
+import { t, useLang } from "@/lib/i18n";
 
 export function Navigation() {
   const { currentView, setCurrentView } = useGame();
+  useLang(); // re-render on language change
 
   const isViewActive = (views: string[]) => views.includes(currentView);
 
@@ -22,7 +24,7 @@ export function Navigation() {
           <div className={`p-2 rounded-full mb-1 transition-colors ${isViewActive(['ahupuaa']) ? 'bg-[#2F6F4E]/12' : ''}`}>
             <Map size={26} strokeWidth={isViewActive(['ahupuaa']) ? 2.5 : 2} />
           </div>
-          <span className="text-[11px] font-bold tracking-wide uppercase">Map</span>
+          <span className="text-[11px] font-bold tracking-wide uppercase">{t('nav_map')}</span>
         </button>
 
         <button
@@ -37,22 +39,22 @@ export function Navigation() {
           <div className={`p-2 rounded-full mb-1 transition-colors ${isViewActive(['camera']) ? 'bg-[#7BC96F]/15' : ''}`}>
             <Camera size={26} strokeWidth={isViewActive(['camera']) ? 2.5 : 2} />
           </div>
-          <span className="text-[11px] font-bold tracking-wide uppercase">Scan</span>
+          <span className="text-[11px] font-bold tracking-wide uppercase">{t('nav_scan')}</span>
         </button>
 
         <button
           data-testid="nav-piko"
           onClick={() => setCurrentView('piko')}
           className={`flex flex-col items-center justify-center w-20 h-full transition-all ${
-            isViewActive(['piko', 'plant_index', 'tasks', 'settings'])
+            isViewActive(['piko', 'plant_index', 'tasks', 'settings', 'about'])
               ? 'text-[#2F6F4E] scale-110'
               : 'text-[#26342F]/35 hover:text-[#2F6F4E]/70'
           }`}
         >
-          <div className={`p-2 rounded-full mb-1 transition-colors ${isViewActive(['piko', 'plant_index', 'tasks', 'settings']) ? 'bg-[#2F6F4E]/12' : ''}`}>
-            <Target size={26} strokeWidth={isViewActive(['piko', 'plant_index', 'tasks', 'settings']) ? 2.5 : 2} />
+          <div className={`p-2 rounded-full mb-1 transition-colors ${isViewActive(['piko', 'plant_index', 'tasks', 'settings', 'about']) ? 'bg-[#2F6F4E]/12' : ''}`}>
+            <Target size={26} strokeWidth={isViewActive(['piko', 'plant_index', 'tasks', 'settings', 'about']) ? 2.5 : 2} />
           </div>
-          <span className="text-[11px] font-bold tracking-wide uppercase">Piko</span>
+          <span className="text-[11px] font-bold tracking-wide uppercase">{t('nav_piko')}</span>
         </button>
 
       </div>

@@ -1,4 +1,5 @@
 import { useGame, Zone, PLANT_DATABASE, Plant } from "@/lib/GameContext";
+import { t, useLang } from "@/lib/i18n";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { Leaf } from "lucide-react";
@@ -33,8 +34,8 @@ export function MapPage() {
       const success = placePlant(plantId, targetZone);
       if (!success) {
         toast({
-          title: `You can't plant it there! 🌿`,
-          description: `${plant?.name} lives in ${plant?.zone}.`,
+          title: t('map_wrong_zone'),
+          description: t('map_wrong_zone_desc', { name: plant?.name ?? '', zone: plant?.zone ?? '' }),
           variant: "destructive"
         });
       }
@@ -161,7 +162,7 @@ export function MapPage() {
                 {dedupedInventory.length === 0 ? (
                   <div className="h-14 px-4 flex items-center rounded-2xl text-sm font-medium whitespace-nowrap"
                     style={{ background: 'rgba(246,241,231,0.92)', color: 'rgba(38,52,47,0.45)', border: '1.5px dashed rgba(47,111,78,0.25)' }}>
-                    No plants yet — go scan!
+                    {t('map_no_inventory')}
                   </div>
                 ) : (
                   dedupedInventory.map(({ plant, count }) => (

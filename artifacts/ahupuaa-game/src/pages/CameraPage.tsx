@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useGame, PLANT_DATABASE } from "@/lib/GameContext";
+import { t, useLang } from "@/lib/i18n";
 import { motion, AnimatePresence } from "framer-motion";
 import { Camera, X, RotateCcw, Leaf } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -104,6 +105,7 @@ type ScanState = "idle" | "scanning" | "flashing" | "classifying" | "done" | "un
 
 export function CameraPage() {
   const { collectPlant } = useGame();
+  useLang(); // re-render on language change
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -303,7 +305,7 @@ export function CameraPage() {
           <div className="absolute bottom-24 left-0 right-0 flex justify-center">
             <div className="px-4 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
               <p className="text-white/80 text-xs tracking-widest uppercase">
-                {isScanning ? "Scanning…" : isClassifying ? "Identifying…" : "Point at a plant"}
+                {isScanning ? t('cam_scanning') : isClassifying ? t('cam_identifying') : t('cam_point')}
               </p>
             </div>
           </div>
@@ -372,9 +374,9 @@ export function CameraPage() {
               </div>
               <div className="text-center mb-5">
                 <span className="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
-                  Plant Identified
+                  {t('cam_found_title')}
                 </span>
-                <h2 className="text-3xl font-bold text-gray-900">You found {foundPlant.name}! 🌿</h2>
+                <h2 className="text-3xl font-bold text-gray-900">{t('cam_found_title')} {foundPlant.name}!</h2>
               </div>
               <div className="aspect-square w-44 mx-auto rounded-2xl overflow-hidden shadow-lg mb-5 border-4 border-white ring-2 ring-green-200">
                 <img src={foundPlant.image} alt={foundPlant.name} className="w-full h-full object-cover" />
@@ -390,9 +392,9 @@ export function CameraPage() {
                 onClick={handleCollect}
                 className="w-full py-6 text-lg rounded-2xl bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/30"
               >
-                Add to Inventory
+                {t('got_it')}
               </Button>
-              <Button variant="ghost" onClick={resetScan} className="w-full mt-2">Discard</Button>
+              <Button variant="ghost" onClick={resetScan} className="w-full mt-2">{t('try_again')}</Button>
             </motion.div>
           </motion.div>
         )}
@@ -415,17 +417,16 @@ export function CameraPage() {
                 <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-amber-100 flex items-center justify-center">
                   <Leaf size={36} className="text-amber-500" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Plant Not Recognized</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('cam_not_found_title')}</h2>
                 <p className="text-gray-500 text-sm leading-relaxed px-4">
-                  We couldn't identify that plant. Try getting closer, better lighting, or make sure
-                  a plant is clearly in the frame.
+                  {t('cam_not_found_desc')}
                 </p>
                 {debugLabel && (
                   <p className="text-xs text-gray-400 mt-3">Model returned: <em>"{debugLabel}"</em></p>
                 )}
               </div>
               <Button data-testid="button-try-again" onClick={resetScan} className="w-full py-5 text-base rounded-2xl">
-                Try Again
+                {t('try_again')}
               </Button>
             </motion.div>
           </motion.div>
