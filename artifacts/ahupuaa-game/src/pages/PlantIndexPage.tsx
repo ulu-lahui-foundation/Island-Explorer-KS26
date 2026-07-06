@@ -15,7 +15,7 @@ const ZONE_DETAIL: Record<string, { bg: string; text: string }> = {
   kai:  { bg: '#29B5E8', text: '#ffffff' },
 };
 
-const FILTERS = ["All", "Fern", "Vine", "Trees", "Edible", "Lei"];
+const FILTERS = ["All", "Canoe Plant", "Endemic", "Indigenous"];
 
 export function PlantIndexPage() {
   const { setCurrentView, collectedPlants, darkMode } = useGame();
@@ -48,6 +48,8 @@ export function PlantIndexPage() {
         tagBg: 'rgba(47,111,78,0.12)',
         tagText: '#2F6F4E',
         infoText: 'rgba(38,52,47,0.70)',
+        sectionText: 'rgba(38,52,47,0.55)',
+        rarityBg: 'rgba(47,111,78,0.10)',
       }
     : {
         bg: '#F6F1E7',
@@ -73,11 +75,13 @@ export function PlantIndexPage() {
         tagBg: 'rgba(47,111,78,0.12)',
         tagText: '#2F6F4E',
         infoText: 'rgba(38,52,47,0.70)',
+        sectionText: 'rgba(38,52,47,0.55)',
+        rarityBg: 'rgba(47,111,78,0.10)',
       };
 
   const filtered = PLANT_DATABASE.filter(plant => {
     if (search && !plant.name.toLowerCase().includes(search.toLowerCase())) return false;
-    if (filter !== "All" && !plant.tags.includes(filter.toLowerCase())) return false;
+    if (filter !== "All" && plant.category !== filter) return false;
     return true;
   });
 
@@ -113,7 +117,7 @@ export function PlantIndexPage() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search plants…"
+            placeholder="Search plants\u2026"
             className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
             style={{
               background: t.searchBg,
@@ -147,7 +151,6 @@ export function PlantIndexPage() {
           {filtered.map((plant, i) => {
             const isFound = collectedPlants.includes(plant.id);
             const badge   = ZONE_BADGE[plant.zone];
-            const firstTag = plant.tags[0] ?? '';
 
             return (
               <motion.div
@@ -214,12 +217,12 @@ export function PlantIndexPage() {
                   {isFound ? (
                     <>
                       <p className="font-bold text-sm leading-tight truncate" style={{ color: t.text }}>{plant.name}</p>
-                      <p className="text-xs capitalize" style={{ color: t.sub }}>{firstTag}</p>
+                      <p className="text-xs" style={{ color: t.sub }}>{plant.category}</p>
                     </>
                   ) : (
                     <>
                       <p className="font-bold text-sm" style={{ color: t.muted }}>???</p>
-                      <p className="text-xs capitalize" style={{ color: t.faint }}>{firstTag}</p>
+                      <p className="text-xs" style={{ color: t.faint }}>{plant.category}</p>
                     </>
                   )}
                 </div>
@@ -248,7 +251,7 @@ export function PlantIndexPage() {
             className="fixed inset-0 z-[200] flex flex-col overflow-hidden"
             style={{ background: t.detailBg }}
           >
-            <div className="relative w-full" style={{ height: '45%' }}>
+            <div className="relative w-full" style={{ height: '40%' }}>
               <img src={selected.image} alt={selected.name} className="w-full h-full object-cover" />
               <div className="absolute inset-x-0 bottom-0 h-1.5"
                 style={{ background: ZONE_DETAIL[selected.zone].bg }} />
@@ -262,29 +265,62 @@ export function PlantIndexPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 pt-6 pb-16">
-              <span
-                className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4"
-                style={{ background: ZONE_DETAIL[selected.zone].bg, color: ZONE_DETAIL[selected.zone].text }}
-              >
-                {selected.zone.charAt(0).toUpperCase() + selected.zone.slice(1)} Zone
-              </span>
-
-              <h2 className="text-4xl font-extrabold mb-3 leading-tight" style={{ color: '#26342F' }}>
-                {selected.name}
-              </h2>
-
-              <div className="flex flex-wrap gap-2 mb-5">
-                {selected.tags.map(tag => (
-                  <span key={tag} className="px-2.5 py-1 rounded-full text-xs font-bold uppercase"
-                    style={{ background: t.tagBg, color: t.tagText }}>
-                    {tag}
-                  </span>
-                ))}
+              {/* Category + Rarity badges */}
+              <div className="flex gap-2 mb-4">
+                <span
+                  className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
+                  style={{ background: ZONE_DETAIL[selected.zone].bg, color: ZONE_DETAIL[selected.zone].text }}
+                >
+                  {selected.zone.charAt(0).toUpperCase() + selected.zone.slice(1)} Zone
+                </span>
+                <span
+                  className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
+                  style={{ background: t.tagBg, color: t.tagText }}
+                >
+                  {selected.category}
+                </span>
+                <span
+                  className="inline-block px-3 py-1 rounded-full text-xs font-bold"
+                  style={{ background: t.rarityBg, color: t.tagText }}
+                >
+                  {selected.rarity}
+                </span>
               </div>
 
-              <p className="text-base leading-relaxed" style={{ color: t.infoText }}>
-                {selected.info}
+              <h2 className="text-4xl font-extrabold mb-1 leading-tight" style={{ color: '#26342F' }}>
+                {selected.name}
+              </h2>
+              <p className="text-sm italic font-semibold mb-5" style={{ color: t.infoText }}>
+                {selected.scientific}
               </p>
+
+              {/* Info sections */}
+              <div className="flex flex-col gap-5">
+                <div>
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider mb-1.5" style={{ color: t.tagText }}>Description</h3>
+                  <p className="text-sm leading-relaxed" style={{ color: t.infoText }}>{selected.description}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider mb-1.5" style={{ color: t.tagText }}>Where It Grows</h3>
+                  <p className="text-sm leading-relaxed" style={{ color: t.infoText }}>{selected.distribution}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider mb-1.5" style={{ color: t.tagText }}>Cultural Significance</h3>
+                  <p className="text-sm leading-relaxed" style={{ color: t.infoText }}>{selected.cultural}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider mb-1.5" style={{ color: t.tagText }}>Landscape Use</h3>
+                  <p className="text-sm leading-relaxed" style={{ color: t.infoText }}>{selected.landscape}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider mb-1.5" style={{ color: t.tagText }}>Care</h3>
+                  <p className="text-sm leading-relaxed" style={{ color: t.infoText }}>{selected.care}</p>
+                </div>
+              </div>
             </div>
           </motion.div>
         )}

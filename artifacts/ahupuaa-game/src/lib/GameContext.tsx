@@ -1,23 +1,30 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { loadWeeklyState, saveWeeklyState, checkTasks, WeeklyState } from './weeklyTasks';
+import { PLANT_DATA, PlantData } from './plantData';
 
 export type Zone = 'uka' | 'kula' | 'kai';
 
-export type Plant = {
-  id: string;
-  name: string;
+export type Plant = PlantData & {
   tags: string[];
-  zone: Zone;
-  image: string;
-  info: string;
 };
 
-export const PLANT_DATABASE: Plant[] = [
-  { id: 'kukui', name: 'Kukui', tags: ['trees', 'edible'], zone: 'kula', image: '/plants/kukui.jpg', info: 'The Candlenut tree. Its nuts were used for light, oil, and medicine.' },
-  { id: 'kalo', name: 'Kalo', tags: ['edible'], zone: 'kai', image: '/plants/kalo.jpg', info: 'Taro. A sacred staple food in Hawaiian culture representing family and ancestry.' },
-  { id: 'ohia', name: '\u02bb\u014chi\u02bba Lehua', tags: ['trees', 'lei'], zone: 'uka', image: '/plants/ohia.jpg', info: '\u02bb\u014chi\u02bba Lehua. A vital forest tree that gathers rain and is sacred to Laka.' },
-  { id: 'limu', name: 'Limu', tags: ['edible'], zone: 'kai', image: '/plants/limu.jpg', info: 'Edible seaweed. A vital part of traditional Hawaiian diet gathered from the ocean.' },
-];
+function deriveTags(plant: PlantData): string[] {
+  const tags: string[] = [];
+  if (plant.category === 'Canoe Plant') tags.push('canoe');
+  if (plant.category === 'Endemic') tags.push('endemic');
+  if (plant.category === 'Indigenous') tags.push('indigenous');
+  if (plant.rarity.toLowerCase().includes('common')) tags.push('common');
+  if (plant.rarity.toLowerCase().includes('rare')) tags.push('rare');
+  if (plant.zone === 'uka') tags.push('mountain');
+  if (plant.zone === 'kula') tags.push('valley');
+  if (plant.zone === 'kai') tags.push('coast');
+  return tags;
+}
+
+export const PLANT_DATABASE: Plant[] = PLANT_DATA.map(p => ({
+  ...p,
+  tags: deriveTags(p),
+}));
 
 export type ViewState = 'ahupuaa' | 'camera' | 'piko' | 'plant_index' | 'tasks' | 'settings' | 'about';
 

@@ -1,82 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useGame, PLANT_DATABASE } from "@/lib/GameContext";
+import { useRef, useState, useCallback } from "react";
+import { useGame, PLANT_DATABASE, Plant } from "@/lib/GameContext";
+import { PLANT_ALIASES } from "@/lib/plantData";
+import { ArrowLeft, Camera as CameraIcon, Check, RefreshCw, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, X, RotateCcw, Leaf } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
-const CLASSIFY_URL = "/api/classify-plant";
 
 // ---------------------------------------------------------------------------
-// Response parsing — fully defensive against any Roboflow workflow output shape.
-// The new workflow (plant-identification-app-20-v6-logic) may use different
-// output key names than the old classifier. We walk the entire outputs array
-// and collect every string that looks like a class / prediction label.
+// Robust AI label → our Plant mapping
 // ---------------------------------------------------------------------------
 
-/** Recursively collect every string value of keys that sound like a prediction label */
-function collectLabels(obj: unknown, depth = 0): string[] {
-  if (depth > 6 || !obj || typeof obj !== "object") return [];
-  const LABEL_KEYS = new Set([
-    "top", "class", "label", "plant", "predicted_class",
-    "prediction", "name", "result", "classification",
-  ]);
-
-  const results: string[] = [];
-
-  if (Array.isArray(obj)) {
-    for (const item of obj) results.push(...collectLabels(item, depth + 1));
-    return results;
-  }
-
-  for (const [key, val] of Object.entries(obj as Record<string, unknown>)) {
-    if (LABEL_KEYS.has(key.toLowerCase()) && typeof val === "string" && val.length > 0) {
-      results.push(val);
-    } else {
-      results.push(...collectLabels(val, depth + 1));
-    }
-  }
-  return results;
-}
-
-/** Pick the most useful label from a Roboflow workflow response */
-function extractTopPrediction(result: unknown): string | null {
-  try {
-    const data = result as Record<string, unknown>;
-
-    // Standard workflow shape: { outputs: [ { <output_name>: { top, predictions, ... } } ] }
-    if (Array.isArray(data?.outputs)) {
-      for (const out of data.outputs as unknown[]) {
-        const labels = collectLabels(out);
-        if (labels.length > 0) {
-          console.log("[Scan] all labels found in outputs:", labels);
-          return labels[0];
-        }
-      }
-    }
-
-    // Flat shape fallback: { top, class, predictions: [...] }
-    const labels = collectLabels(data);
-    if (labels.length > 0) return labels[0];
-
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Plant matching — alias table handles every known class name variant.
-// Add new aliases here when the model is retrained with different labels.
-// ---------------------------------------------------------------------------
-
-const PLANT_ALIASES: Record<string, string[]> = {
-  ohia:  ["ohia", "ohia lehua", "lehua", "metrosideros", "ohia-lehua"],
-  kalo:  ["kalo", "taro", "colocasia", "dasheen", "poi", "coco yam", "cocoyam", "hawaiian taro"],
-  kukui: ["kukui", "candlenut", "aleurites", "candletree", "kukui nut"],
-};
-
-function matchPlant(label: string | null) {
+function findPlantByLabel(label: string): Plant | null {
   if (!label) return null;
+
   const lower = label.toLowerCase().trim();
   const stripped = lower.replace(/[^a-z]/g, "");
 
@@ -138,328 +72,333 @@ export function CameraPage() {
       if (e.name === "NotAllowedError") {
         setCameraError("Camera permission denied. Please allow camera access and try again.");
       } else {
-        setCameraError("Unable to start camera. Please check your device.");
+        setCameraError("Could not access camera.");
       }
     }
   }, []);
 
-  useEffect(() => {
-    startCamera(facingMode);
-    return () => {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-    };
-  }, [facingMode, startCamera]);
-
-  const handleFlipCamera = () => {
-    setFacingMode((prev) => (prev === "environment" ? "user" : "environment"));
+  const flipCamera = () => {
+    const next = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(next);
+    startCamera(next);
   };
 
-  const captureBase64 = (): string | null => {
+  const takeSnapshot = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas) return null;
+    if (!video || !canvas || !cameraReady) return;
 
-    const MAX_WIDTH = 640;
-    const scale = Math.min(1, MAX_WIDTH / (video.videoWidth || 640));
-    canvas.width = Math.round((video.videoWidth || 640) * scale);
-    canvas.height = Math.round((video.videoHeight || 480) * scale);
-
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
+    if (!ctx) return;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
-    return dataUrl.split(",")[1];
+    setScanState("flashing");
+    setTimeout(() => setScanState("classifying"), 200);
+
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        classifyImage(blob);
+      },
+      "image/jpeg",
+      0.85,
+    );
   };
 
-  const handleScan = async () => {
-    if (scanState !== "idle" || !cameraReady) return;
-
-    setScanState("scanning");
-    setDebugLabel(null);
-
-    await new Promise((r) => setTimeout(r, 1800));
-
-    setScanState("flashing");
-    await new Promise((r) => setTimeout(r, 350));
-
-    const base64 = captureBase64();
-    setScanState("classifying");
-
-    if (!base64) {
-      setScanState("error");
-      return;
-    }
-
+  const classifyImage = async (imageBlob: Blob) => {
     try {
-      const response = await fetch(CLASSIFY_URL, {
+      const fd = new FormData();
+      fd.append("image", imageBlob, "capture.jpg");
+
+      const res = await fetch("/api/classify-plant", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: base64 }),
+        body: fd,
       });
 
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const result = await response.json();
-
-      const label = extractTopPrediction(result);
-      console.log("[Scan] raw label from Roboflow:", label);
-      setDebugLabel(label);
-
-      const plant = matchPlant(label);
-      console.log("[Scan] matched plant:", plant?.id ?? "none");
-
-      if (plant) {
-        setFoundPlant(plant);
-        setScanState("done");
-        incrementScanCount();
-      } else {
-        setScanState("unknown");
-        incrementScanCount();
+      if (!res.ok) {
+        throw new Error(`Server error ${res.status}`);
       }
-    } catch (err) {
-      console.error("Roboflow error:", err);
+
+      const data = await res.json();
+      const top = data?.predictions?.[0];
+      const label = top?.class ?? top?.label ?? "Unknown";
+      const confidence = top?.confidence ?? 0;
+      setDebugLabel(`${label} (${(confidence * 100).toFixed(0)}%)`);
+
+      incrementScanCount();
+
+      if (confidence < 0.3) {
+        setFoundPlant(null);
+        setScanState("unknown");
+        return;
+      }
+
+      const plant = findPlantByLabel(label);
+      setFoundPlant(plant);
+      setScanState(plant ? "done" : "unknown");
+    } catch {
       setScanState("error");
     }
   };
 
-  const handleCollect = () => {
-    if (foundPlant) collectPlant(foundPlant);
-    resetScan();
-  };
-
-  const resetScan = () => {
-    setFoundPlant(null);
+  const closeResult = () => {
     setScanState("idle");
+    setFoundPlant(null);
     setDebugLabel(null);
   };
 
-  const isScanning = scanState === "scanning";
-  const isClassifying = scanState === "classifying";
-  const isFlashing = scanState === "flashing";
-  const isActive = scanState === "idle" || isScanning || isFlashing || isClassifying;
+  const collect = () => {
+    if (foundPlant) {
+      collectPlant(foundPlant);
+    }
+    closeResult();
+  };
 
   return (
-    <div className="relative w-full h-full bg-black flex flex-col overflow-hidden pb-20">
+    <div className="w-full h-full relative overflow-hidden bg-[#0a1a10]">
+      {/* Video feed */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
         muted
         className="absolute inset-0 w-full h-full object-cover"
-        style={{ display: cameraReady ? "block" : "none" }}
       />
       <canvas ref={canvasRef} className="hidden" />
 
+      {/* Camera start overlay */}
       {!cameraReady && !cameraError && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}>
-            <Camera size={40} className="text-green-400" />
-          </motion.div>
-          <p className="text-white/70 text-sm">Starting camera…</p>
-        </div>
-      )}
-
-      {cameraError && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8">
-          <Camera size={48} className="text-red-400" />
-          <p className="text-white text-center text-sm leading-relaxed">{cameraError}</p>
-          <Button variant="outline" className="border-white/30 text-white" onClick={() => startCamera(facingMode)}>
-            Try Again
-          </Button>
-        </div>
-      )}
-
-      {/* Viewfinder — tall corners spanning most of the screen */}
-      {isActive && cameraReady && (
-        <div className="absolute inset-0 pointer-events-none">
-          {/* Corner brackets: top pair near top, bottom pair ~144px above nav */}
-          <motion.div
-            animate={isScanning || isClassifying ? { opacity: [1, 0.4, 1] } : { opacity: 1 }}
-            transition={{ repeat: Infinity, duration: 1.2 }}
-            className="absolute inset-0"
-          >
-            {/* Top-left */}
-            <div className="absolute top-10 left-5 w-10 h-10 border-t-4 border-l-4 border-green-400 rounded-tl-sm" />
-            {/* Top-right */}
-            <div className="absolute top-10 right-5 w-10 h-10 border-t-4 border-r-4 border-green-400 rounded-tr-sm" />
-            {/* Bottom-left — kept in place */}
-            <div className="absolute bottom-36 left-5 w-10 h-10 border-b-4 border-l-4 border-green-400 rounded-bl-sm" />
-            {/* Bottom-right — kept in place */}
-            <div className="absolute bottom-36 right-5 w-10 h-10 border-b-4 border-r-4 border-green-400 rounded-br-sm" />
-          </motion.div>
-
-          {/* Scanning line — travels the full height between the corner pairs */}
-          <AnimatePresence>
-            {isScanning && (
-              <motion.div
-                key="scan-line"
-                className="absolute left-5 right-5 h-0.5 bg-green-400 shadow-[0_0_12px_4px_rgba(74,222,128,0.6)]"
-                style={{ top: 56 }}           /* start just below top corners (top-10 = 40px + bracket height) */
-                animate={{ top: "calc(100% - 176px)" }}   /* end at bottom-36 (144px) + bracket (32px) */
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              />
-            )}
-          </AnimatePresence>
-
-          {/* Status label — same position as before, just above shutter */}
-          <div className="absolute bottom-24 left-0 right-0 flex justify-center">
-            <div className="px-4 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
-              <p className="text-white/80 text-xs tracking-widest uppercase">
-                {isScanning ? "Scanning…" : isClassifying ? "Identifying…" : "Point at a plant"}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Flash */}
-      <AnimatePresence>
-        {isFlashing && (
-          <motion.div
-            key="flash"
-            className="absolute inset-0 bg-white z-40 pointer-events-none"
-            initial={{ opacity: 1 }}
-            animate={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Flip camera */}
-      {cameraReady && isActive && (
-        <button
-          onClick={handleFlipCamera}
-          className="absolute top-5 right-5 w-10 h-10 rounded-full bg-black/40 backdrop-blur flex items-center justify-center text-white"
-          data-testid="button-flip-camera"
-        >
-          <RotateCcw size={18} />
-        </button>
-      )}
-
-      {/* Shutter — midway between status label (bottom-24) and nav bar (bottom-0) */}
-      {cameraReady && (
-        <div className="absolute bottom-10 left-0 right-0 flex justify-center">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-20">
           <button
-            data-testid="button-shutter"
-            onClick={handleScan}
-            disabled={!isActive || scanState !== "idle"}
-            className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center active:scale-90 transition-all duration-150 disabled:opacity-40"
+            onClick={() => startCamera(facingMode)}
+            className="px-8 py-4 rounded-2xl bg-[#5CC882] text-[#1A3828] font-extrabold text-lg shadow-lg"
           >
-            <motion.div
-              className="w-16 h-16 rounded-full bg-white"
-              animate={isScanning || isClassifying ? { scale: [1, 0.92, 1] } : { scale: 1 }}
-              transition={{ repeat: Infinity, duration: 0.9 }}
-            />
+            Start Camera
           </button>
         </div>
       )}
 
-      {/* ── Result Sheets ── */}
+      {/* Error overlay */}
+      {cameraError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-30">
+          <div className="text-center px-6">
+            <p className="text-white font-bold text-lg mb-4">{cameraError}</p>
+            <button
+              onClick={() => startCamera(facingMode)}
+              className="px-6 py-3 rounded-xl bg-[#5CC882] text-[#1A3828] font-bold"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
 
-      {/* SUCCESS */}
+      {/* Top bar */}
+      <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-4 pt-12 pb-4 bg-gradient-to-b from-black/50 to-transparent">
+        <button
+          onClick={closeResult}
+          className="w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ background: 'rgba(20,40,28,0.55)', backdropFilter: 'blur(8px)' }}
+        >
+          <ArrowLeft size={18} color="#fff" />
+        </button>
+        <span className="font-bold text-sm text-white/80">Scan a Plant</span>
+        <button
+          onClick={flipCamera}
+          className="w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ background: 'rgba(20,40,28,0.55)', backdropFilter: 'blur(8px)' }}
+        >
+          <RefreshCw size={16} color="#fff" />
+        </button>
+      </div>
+
+      {/* ── Tall corner brackets + scanning line ── */}
+      {cameraReady && scanState === "idle" && (
+        <>
+          {/* Corner brackets — span full height */}
+          <div className="absolute inset-y-0 left-5 flex flex-col justify-center z-10">
+            <div className="w-8 h-8 border-l-4 border-t-4 rounded-tl-lg border-[#5CC882]" />
+            <div className="h-48" />
+            <div className="w-8 h-8 border-l-4 border-b-4 rounded-bl-lg border-[#5CC882]" />
+          </div>
+          <div className="absolute inset-y-0 right-5 flex flex-col justify-center z-10">
+            <div className="w-8 h-8 border-r-4 border-t-4 rounded-tr-lg border-[#5CC882]" />
+            <div className="h-48" />
+            <div className="w-8 h-8 border-r-4 border-b-4 rounded-br-lg border-[#5CC882]" />
+          </div>
+
+          {/* Sweeping scan line — animate between brackets */}
+          <motion.div
+            className="absolute left-5 right-5 h-0.5 bg-[#5CC882]/60 rounded-full z-10"
+            initial={{ top: '20%' }}
+            animate={{ top: ['20%', '80%', '20%'] }}
+            transition={{ duration: 3, ease: 'easeInOut', repeat: Infinity }}
+          />
+        </>
+      )}
+
+      {/* Center capture button */}
+      {cameraReady && scanState === "idle" && (
+        <button
+          onClick={takeSnapshot}
+          className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 w-20 h-20 rounded-full bg-[#5CC882] flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+        >
+          <CameraIcon size={32} color="#1A3828" />
+        </button>
+      )}
+
+      {/* Flash overlay */}
+      <AnimatePresence>
+        {scanState === "flashing" && (
+          <motion.div
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="absolute inset-0 bg-white z-50 pointer-events-none"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Classifying overlay */}
+      <AnimatePresence>
+        {scanState === "classifying" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/70 z-40 flex flex-col items-center justify-center"
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+              className="mb-4"
+            >
+              <Zap size={40} color="#5CC882" />
+            </motion.div>
+            <p className="text-white font-bold text-lg">Identifying plant...</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Result overlay — found */}
       <AnimatePresence>
         {scanState === "done" && foundPlant && (
           <motion.div
-            key="success-sheet"
-            className="absolute inset-0 z-50 flex items-end bg-black/60 backdrop-blur-sm"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 28, stiffness: 220 }}
+            className="absolute inset-x-0 bottom-0 z-50 rounded-t-[2rem] overflow-hidden"
+            style={{ background: '#F6F1E7', maxHeight: '60%' }}
           >
-            <motion.div
-              className="w-full bg-white rounded-t-3xl p-6 pb-28 shadow-2xl"
-              initial={{ y: "100%" }} animate={{ y: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            >
-              <div className="flex justify-end mb-1">
-                <button onClick={resetScan} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            <div className="p-6 pb-12 flex flex-col items-center text-center">
+              <div className="w-20 h-20 rounded-full bg-[#5CC882] flex items-center justify-center mb-3">
+                <Check size={36} color="#1A3828" />
               </div>
-              <div className="text-center mb-5">
-                <span className="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
-                  Plant Identified
-                </span>
-                <h2 className="text-3xl font-bold text-gray-900">You found {foundPlant.name}! 🌿</h2>
-              </div>
-              <div className="aspect-square w-44 mx-auto rounded-2xl overflow-hidden shadow-lg mb-5 border-4 border-white ring-2 ring-green-200">
-                <img src={foundPlant.image} alt={foundPlant.name} className="w-full h-full object-cover" />
-              </div>
-              <p className="text-center text-gray-600 mb-7 px-4 font-medium leading-relaxed text-sm">
-                {foundPlant.info}
+              <p className="text-[#2F6F4E] font-bold text-sm uppercase tracking-wider mb-1">
+                Plant Found
+              </p>
+              <h2 className="text-[#26342F] font-extrabold text-3xl mb-1">
+                {foundPlant.name}
+              </h2>
+              <p className="text-[#26342F]/60 text-sm font-semibold italic mb-4">
+                {foundPlant.scientific}
+              </p>
+              <p className="text-[#26342F]/70 text-sm leading-relaxed max-w-xs mb-6">
+                {foundPlant.description}
               </p>
               {debugLabel && (
-                <p className="text-center text-xs text-gray-400 mb-3">Model returned: <em>{debugLabel}</em></p>
+                <p className="text-[#26342F]/40 text-xs font-medium mb-4">{debugLabel}</p>
               )}
-              <Button
-                data-testid="button-add-to-inventory"
-                onClick={handleCollect}
-                className="w-full py-6 text-lg rounded-2xl bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/30"
+              <button
+                onClick={collect}
+                className="w-full py-3.5 rounded-2xl bg-[#2F6F4E] text-white font-extrabold text-base shadow-lg active:scale-[0.98] transition-transform"
               >
-                Add to Inventory
-              </Button>
-              <Button variant="ghost" onClick={resetScan} className="w-full mt-2">Discard</Button>
-            </motion.div>
+                Collect Plant
+              </button>
+              <button
+                onClick={closeResult}
+                className="mt-3 text-[#26342F]/50 font-semibold text-sm"
+              >
+                Dismiss
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* UNKNOWN PLANT */}
+      {/* Result overlay — not found */}
       <AnimatePresence>
         {scanState === "unknown" && (
           <motion.div
-            key="unknown-sheet"
-            className="absolute inset-0 z-50 flex items-end bg-black/60 backdrop-blur-sm"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 28, stiffness: 220 }}
+            className="absolute inset-x-0 bottom-0 z-50 rounded-t-[2rem] overflow-hidden"
+            style={{ background: '#F6F1E7', maxHeight: '60%' }}
           >
-            <motion.div
-              className="w-full bg-white rounded-t-3xl p-6 pb-28 shadow-2xl"
-              initial={{ y: "100%" }} animate={{ y: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            >
-              <div className="text-center mb-6">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-amber-100 flex items-center justify-center">
-                  <Leaf size={36} className="text-amber-500" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Plant Not Recognized</h2>
-                <p className="text-gray-500 text-sm leading-relaxed px-4">
-                  We couldn't identify that plant. Try getting closer, better lighting, or make sure
-                  a plant is clearly in the frame.
-                </p>
-                {debugLabel && (
-                  <p className="text-xs text-gray-400 mt-3">Model returned: <em>"{debugLabel}"</em></p>
-                )}
+            <div className="p-6 pb-12 flex flex-col items-center text-center">
+              <div className="w-16 h-16 rounded-full bg-[#E8E4DB] flex items-center justify-center mb-3">
+                <CameraIcon size={28} color="#999" />
               </div>
-              <Button data-testid="button-try-again" onClick={resetScan} className="w-full py-5 text-base rounded-2xl">
-                Try Again
-              </Button>
-            </motion.div>
+              <p className="text-[#999] font-bold text-sm uppercase tracking-wider mb-1">
+                No Match
+              </p>
+              <h2 className="text-[#26342F] font-extrabold text-2xl mb-2">
+                Couldn\u2019t identify this plant
+              </h2>
+              <p className="text-[#26342F]/60 text-sm leading-relaxed max-w-xs mb-5">
+                Try again with better lighting or a closer angle.
+              </p>
+              {debugLabel && (
+                <p className="text-[#26342F]/40 text-xs font-medium mb-4">{debugLabel}</p>
+              )}
+              <button
+                onClick={closeResult}
+                className="w-full py-3.5 rounded-2xl bg-[#2F6F4E] text-white font-extrabold text-base shadow-lg active:scale-[0.98] transition-transform"
+              >
+                Scan Again
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ERROR */}
+      {/* Error overlay */}
       <AnimatePresence>
         {scanState === "error" && (
           <motion.div
-            key="error-sheet"
-            className="absolute inset-0 z-50 flex items-end bg-black/60 backdrop-blur-sm"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 28, stiffness: 220 }}
+            className="absolute inset-x-0 bottom-0 z-50 rounded-t-[2rem] overflow-hidden"
+            style={{ background: '#F6F1E7', maxHeight: '60%' }}
           >
-            <motion.div
-              className="w-full bg-white rounded-t-3xl p-6 pb-28 shadow-2xl"
-              initial={{ y: "100%" }} animate={{ y: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            >
-              <div className="text-center mb-6">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
-                  <X size={36} className="text-red-400" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h2>
-                <p className="text-gray-500 text-sm leading-relaxed px-4">
-                  Couldn't reach the plant identification service. Check your internet connection and try again.
-                </p>
+            <div className="p-6 pb-12 flex flex-col items-center text-center">
+              <div className="w-16 h-16 rounded-full bg-[#E8E4DB] flex items-center justify-center mb-3">
+                <Zap size={28} color="#999" />
               </div>
-              <Button data-testid="button-retry-error" onClick={resetScan} className="w-full py-5 text-base rounded-2xl">
+              <p className="text-[#999] font-bold text-sm uppercase tracking-wider mb-1">
+                Error
+              </p>
+              <h2 className="text-[#26342F] font-extrabold text-2xl mb-2">
+                Something went wrong
+              </h2>
+              <p className="text-[#26342F]/60 text-sm leading-relaxed max-w-xs mb-5">
+                Couldn\u2019t reach the plant identification server. Check your connection and try again.
+              </p>
+              <button
+                onClick={closeResult}
+                className="w-full py-3.5 rounded-2xl bg-[#2F6F4E] text-white font-extrabold text-base shadow-lg active:scale-[0.98] transition-transform"
+              >
                 Try Again
-              </Button>
-            </motion.div>
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
