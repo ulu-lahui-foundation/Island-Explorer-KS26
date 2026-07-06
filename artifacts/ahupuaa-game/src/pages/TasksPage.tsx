@@ -2,13 +2,8 @@ import { useGame, PLANT_DATABASE } from "@/lib/GameContext";
 import { ArrowLeft, CheckCircle2, Circle } from "lucide-react";
 import { motion } from "framer-motion";
 
-const PAGE_BG  = '#245238';
-const CARD_BG  = '#2A6042';
-const CARD_DIM = '#1D4A30';
-const ACCENT   = '#5CC882';
-
 export function TasksPage() {
-  const { setCurrentView, collectedPlants, placedPlants } = useGame();
+  const { setCurrentView, collectedPlants, placedPlants, darkMode } = useGame();
 
   const isTreeInUka = placedPlants.some(p => {
     const plant = PLANT_DATABASE.find(db => db.id === p.plantId);
@@ -27,40 +22,68 @@ export function TasksPage() {
     { title: "Collect your first plant",             completed: collectedPlants.length >= 1 },
     { title: `Collect all ${PLANT_DATABASE.length} plants`, completed: collectedPlants.length >= PLANT_DATABASE.length },
     { title: "Plant a tree in Uka",                  completed: isTreeInUka },
-    { title: "Build your ahupuaʻa",                  completed: hasAllZones },
+    { title: "Build your ahupua\u02bba",                  completed: hasAllZones },
     { title: "Become a Plant Master",                 completed: isMaster },
   ];
 
   const completedCount = tasks.filter(t => t.completed).length;
   const progressPercent = (completedCount / tasks.length) * 100;
 
+  const t = darkMode
+    ? {
+        bg: '#245238',
+        cardDoneBg: '#2A6042',
+        cardDoneBorder: 'rgba(255,255,255,0.10)',
+        cardDoneShadow: '0 4px 14px rgba(0,0,0,0.25)',
+        cardTodoBg: '#1D4A30',
+        cardTodoBorder: 'rgba(255,255,255,0.06)',
+        cardTodoShadow: '0 4px 14px rgba(0,0,0,0.20)',
+        text: '#ffffff',
+        muted: 'rgba(255,255,255,0.55)',
+        sub: 'rgba(255,255,255,0.50)',
+        accent: '#5CC882',
+        barBg: 'rgba(255,255,255,0.10)',
+      }
+    : {
+        bg: '#F6F1E7',
+        cardDoneBg: '#ffffff',
+        cardDoneBorder: 'rgba(47,111,78,0.15)',
+        cardDoneShadow: '0 4px 14px rgba(0,0,0,0.06)',
+        cardTodoBg: '#ffffff',
+        cardTodoBorder: 'rgba(47,111,78,0.10)',
+        cardTodoShadow: '0 4px 14px rgba(0,0,0,0.04)',
+        text: '#26342F',
+        muted: 'rgba(38,52,47,0.55)',
+        sub: 'rgba(38,52,47,0.50)',
+        accent: '#2F6F4E',
+        barBg: 'rgba(47,111,78,0.12)',
+      };
+
   return (
-    <div className="w-full h-full flex flex-col" style={{ background: PAGE_BG }}>
+    <div className="w-full h-full flex flex-col" style={{ background: t.bg }}>
 
       {/* Header */}
-      <div className="px-4 pt-10 pb-4" style={{ background: PAGE_BG }}>
+      <div className="px-4 pt-10 pb-4" style={{ background: t.bg }}>
         <button
           onClick={() => setCurrentView('piko')}
           className="flex items-center gap-1 mb-5 text-sm font-bold"
-          style={{ color: 'rgba(255,255,255,0.55)' }}
+          style={{ color: t.muted }}
         >
           <ArrowLeft size={16} />
           Back
         </button>
 
-        <h1 className="text-4xl font-extrabold leading-tight mb-1 text-white">
+        <h1 className="text-4xl font-extrabold leading-tight mb-1" style={{ color: t.text }}>
           Tasks
         </h1>
-        <p className="text-sm font-semibold mb-4" style={{ color: 'rgba(255,255,255,0.45)' }}>
+        <p className="text-sm font-semibold mb-4" style={{ color: t.sub }}>
           {completedCount} / {tasks.length} completed
         </p>
 
-        {/* Progress bar */}
-        <div className="w-full h-3 rounded-full overflow-hidden"
-          style={{ background: 'rgba(255,255,255,0.10)' }}>
+        <div className="w-full h-3 rounded-full overflow-hidden" style={{ background: t.barBg }}>
           <motion.div
             className="h-full rounded-full"
-            style={{ background: ACCENT }}
+            style={{ background: t.accent }}
             initial={{ width: 0 }}
             animate={{ width: `${progressPercent}%` }}
             transition={{ duration: 0.8, ease: "easeOut" }}
@@ -78,16 +101,16 @@ export function TasksPage() {
             transition={{ delay: i * 0.08 }}
             className="p-4 rounded-2xl flex items-center gap-4"
             style={task.completed
-              ? { background: CARD_BG,   border: '2px solid rgba(255,255,255,0.10)', boxShadow: '0 4px 14px rgba(0,0,0,0.25)' }
-              : { background: CARD_DIM, border: '2px solid rgba(255,255,255,0.06)', boxShadow: '0 4px 14px rgba(0,0,0,0.20)' }
+              ? { background: t.cardDoneBg,   border: `2px solid ${t.cardDoneBorder}`,   boxShadow: t.cardDoneShadow }
+              : { background: t.cardTodoBg,    border: `2px solid ${t.cardTodoBorder}`,   boxShadow: t.cardTodoShadow }
             }
           >
             {task.completed
-              ? <CheckCircle2 size={26} className="shrink-0" style={{ color: ACCENT }} />
-              : <Circle size={26} className="shrink-0" style={{ color: 'rgba(255,255,255,0.20)' }} />
+              ? <CheckCircle2 size={26} className="shrink-0" style={{ color: t.accent }} />
+              : <Circle size={26} className="shrink-0" style={{ color: darkMode ? 'rgba(255,255,255,0.20)' : 'rgba(47,111,78,0.25)' }} />
             }
             <span className="font-bold text-base"
-              style={{ color: task.completed ? '#F6F1E7' : 'rgba(255,255,255,0.50)' }}>
+              style={{ color: task.completed ? t.text : t.sub }}>
               {task.title}
             </span>
           </motion.div>

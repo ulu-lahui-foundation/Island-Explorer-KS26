@@ -32,6 +32,8 @@ interface GameContextType {
   placedPlants: PlacedPlant[];
   collectPlant: (plant: Plant) => void;
   placePlant: (plantId: string, zone: Zone) => boolean;
+  darkMode: boolean;
+  toggleDarkMode: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -41,6 +43,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [collectedPlants, setCollectedPlants] = useState<string[]>([]);
   const [inventory, setInventory] = useState<Plant[]>([]);
   const [placedPlants, setPlacedPlants] = useState<PlacedPlant[]>([]);
+  const [darkMode, setDarkMode] = useState(true);
 
   const collectPlant = (plant: Plant) => {
     if (!collectedPlants.includes(plant.id)) {
@@ -59,6 +62,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return false;
   };
 
+  const toggleDarkMode = () => setDarkMode(prev => !prev);
+
   return (
     <GameContext.Provider
       value={{
@@ -68,7 +73,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         inventory,
         placedPlants,
         collectPlant,
-        placePlant
+        placePlant,
+        darkMode,
+        toggleDarkMode,
       }}
     >
       {children}

@@ -2,12 +2,34 @@ import { useGame } from "@/lib/GameContext";
 import { ArrowLeft, Volume2, Globe, Moon, Bell, Info } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
-const PAGE_BG = '#245238';
-const CARD_BG = '#2A6042';
-const ACCENT  = '#5CC882';
-
 export function SettingsPage() {
-  const { setCurrentView } = useGame();
+  const { setCurrentView, darkMode, toggleDarkMode } = useGame();
+
+  const t = darkMode
+    ? {
+        bg: '#245238',
+        cardBg: '#2A6042',
+        border: 'rgba(255,255,255,0.10)',
+        text: '#ffffff',
+        muted: 'rgba(255,255,255,0.55)',
+        sub: 'rgba(255,255,255,0.45)',
+        faint: 'rgba(255,255,255,0.30)',
+        pillBg: 'rgba(255,255,255,0.10)',
+        accent: '#5CC882',
+        switchTrack: '#5CC882',
+      }
+    : {
+        bg: '#F6F1E7',
+        cardBg: '#ffffff',
+        border: 'rgba(47,111,78,0.15)',
+        text: '#26342F',
+        muted: 'rgba(38,52,47,0.55)',
+        sub: 'rgba(38,52,47,0.50)',
+        faint: 'rgba(38,52,47,0.30)',
+        pillBg: 'rgba(47,111,78,0.10)',
+        accent: '#2F6F4E',
+        switchTrack: '#2F6F4E',
+      };
 
   const SettingRow = ({
     icon: Icon,
@@ -23,12 +45,12 @@ export function SettingsPage() {
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full flex items-center justify-center"
-          style={{ background: 'rgba(255,255,255,0.10)', color: ACCENT }}>
+          style={{ background: darkMode ? 'rgba(255,255,255,0.10)' : 'rgba(47,111,78,0.10)', color: t.accent }}>
           <Icon size={20} />
         </div>
         <div>
-          <h3 className="font-bold text-white">{label}</h3>
-          <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>{desc}</p>
+          <h3 className="font-bold" style={{ color: t.text }}>{label}</h3>
+          <p className="text-sm font-medium" style={{ color: t.sub }}>{desc}</p>
         </div>
       </div>
       {action}
@@ -36,20 +58,20 @@ export function SettingsPage() {
   );
 
   return (
-    <div className="w-full h-full flex flex-col" style={{ background: PAGE_BG }}>
+    <div className="w-full h-full flex flex-col" style={{ background: t.bg }}>
 
       {/* Header */}
-      <div className="px-4 pt-10 pb-4" style={{ background: PAGE_BG }}>
+      <div className="px-4 pt-10 pb-4" style={{ background: t.bg }}>
         <button
           onClick={() => setCurrentView('piko')}
           className="flex items-center gap-1 mb-5 text-sm font-bold"
-          style={{ color: 'rgba(255,255,255,0.55)' }}
+          style={{ color: t.muted }}
         >
           <ArrowLeft size={16} />
           Back
         </button>
 
-        <h1 className="text-4xl font-extrabold leading-tight text-white">
+        <h1 className="text-4xl font-extrabold leading-tight" style={{ color: t.text }}>
           Settings
         </h1>
       </div>
@@ -58,7 +80,7 @@ export function SettingsPage() {
 
         {/* Main options card */}
         <div className="rounded-2xl p-6 flex flex-col gap-7"
-          style={{ background: CARD_BG, border: '2px solid rgba(255,255,255,0.10)', boxShadow: '0 6px 18px rgba(0,0,0,0.30)' }}>
+          style={{ background: t.cardBg, border: `2px solid ${t.border}`, boxShadow: '0 6px 18px rgba(0,0,0,0.12)' }}>
 
           <SettingRow
             icon={Globe}
@@ -66,7 +88,7 @@ export function SettingsPage() {
             desc="English only"
             action={
               <span className="px-3 py-1 rounded-lg text-sm font-bold"
-                style={{ background: 'rgba(255,255,255,0.10)', color: ACCENT }}>
+                style={{ background: t.pillBg, color: t.accent }}>
                 EN
               </span>
             }
@@ -75,8 +97,13 @@ export function SettingsPage() {
           <SettingRow
             icon={Moon}
             label="Dark Mode"
-            desc="Always on in this version"
-            action={<Switch defaultChecked disabled />}
+            desc={darkMode ? 'Deep forest theme on' : 'Light cream theme on'}
+            action={
+              <Switch
+                checked={darkMode}
+                onCheckedChange={toggleDarkMode}
+              />
+            }
           />
 
           <SettingRow
@@ -101,7 +128,7 @@ export function SettingsPage() {
               <button
                 onClick={() => setCurrentView('about')}
                 className="text-sm font-bold px-3 py-1.5 rounded-lg transition-colors"
-                style={{ background: 'rgba(255,255,255,0.10)', color: ACCENT }}
+                style={{ background: t.pillBg, color: t.accent }}
               >
                 Open
               </button>
@@ -110,9 +137,9 @@ export function SettingsPage() {
         </div>
 
         {/* Credits */}
-        <div className="text-center mt-4" style={{ color: 'rgba(255,255,255,0.30)' }}>
+        <div className="text-center mt-4" style={{ color: t.faint }}>
           <p className="font-medium text-sm">Made with aloha for</p>
-          <p className="font-bold" style={{ color: 'rgba(255,255,255,0.45)' }}>Hawaiian ecology education</p>
+          <p className="font-bold" style={{ color: t.muted }}>Hawaiian ecology education</p>
           <p className="text-xs mt-4">Version 1.0.0</p>
         </div>
       </div>

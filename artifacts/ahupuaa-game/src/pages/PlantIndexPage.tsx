@@ -3,11 +3,6 @@ import { ArrowLeft, Search, Lock } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-/* ── Design tokens ── */
-const PAGE_BG   = '#245238';
-const CARD_BG   = '#2A6042';
-const ACTIVE_PILL = '#5CC882';
-
 const ZONE_BADGE: Record<string, { bg: string; text: string }> = {
   uka:  { bg: '#8BC34A', text: '#1A3828' },
   kula: { bg: '#5CC882', text: '#1A3828' },
@@ -22,14 +17,64 @@ const ZONE_DETAIL: Record<string, { bg: string; text: string }> = {
 
 const FILTERS = ["All", "Fern", "Vine", "Trees", "Edible", "Lei"];
 
-/* ── Component ── */
 export function PlantIndexPage() {
-  const { setCurrentView, collectedPlants } = useGame();
-  const [filter, setFilter]       = useState("All");
-  const [search,  setSearch]      = useState("");
+  const { setCurrentView, collectedPlants, darkMode } = useGame();
+  const [filter, setFilter]     = useState("All");
+  const [search,  setSearch]    = useState("");
   const [selected, setSelected]   = useState<Plant | null>(null);
 
-  /* Filter */
+  const t = darkMode
+    ? {
+        bg: '#245238',
+        cardBg: '#2A6042',
+        cardFoundBg: '#2A6042',
+        border: 'rgba(255,255,255,0.10)',
+        text: '#ffffff',
+        title: '#ffffff',
+        muted: 'rgba(255,255,255,0.55)',
+        sub: 'rgba(255,255,255,0.45)',
+        faint: 'rgba(255,255,255,0.30)',
+        pillActiveBg: '#5CC882',
+        pillActiveText: '#1A3828',
+        pillInactiveBg: 'rgba(255,255,255,0.10)',
+        pillInactiveText: 'rgba(255,255,255,0.80)',
+        pillBorder: 'rgba(255,255,255,0.15)',
+        notFoundText: '#ffffff',
+        overlay: 'rgba(20,45,30,0.55)',
+        searchBg: 'rgba(255,255,255,0.10)',
+        searchBorder: 'rgba(255,255,255,0.12)',
+        searchIcon: 'rgba(255,255,255,0.35)',
+        detailBg: '#F6F1E7',
+        tagBg: 'rgba(47,111,78,0.12)',
+        tagText: '#2F6F4E',
+        infoText: 'rgba(38,52,47,0.70)',
+      }
+    : {
+        bg: '#F6F1E7',
+        cardBg: '#ffffff',
+        cardFoundBg: '#ffffff',
+        border: 'rgba(47,111,78,0.15)',
+        text: '#26342F',
+        title: '#26342F',
+        muted: 'rgba(38,52,47,0.55)',
+        sub: 'rgba(38,52,47,0.50)',
+        faint: 'rgba(38,52,47,0.30)',
+        pillActiveBg: '#2F6F4E',
+        pillActiveText: '#F6F1E7',
+        pillInactiveBg: 'rgba(47,111,78,0.08)',
+        pillInactiveText: '#26342F',
+        pillBorder: 'rgba(47,111,78,0.18)',
+        notFoundText: '#111111',
+        overlay: 'rgba(200,210,200,0.60)',
+        searchBg: 'rgba(47,111,78,0.08)',
+        searchBorder: 'rgba(47,111,78,0.12)',
+        searchIcon: 'rgba(47,111,78,0.50)',
+        detailBg: '#F6F1E7',
+        tagBg: 'rgba(47,111,78,0.12)',
+        tagText: '#2F6F4E',
+        infoText: 'rgba(38,52,47,0.70)',
+      };
+
   const filtered = PLANT_DATABASE.filter(plant => {
     if (search && !plant.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (filter !== "All" && !plant.tags.includes(filter.toLowerCase())) return false;
@@ -40,47 +85,45 @@ export function PlantIndexPage() {
   const total      = PLANT_DATABASE.length;
 
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden" style={{ background: PAGE_BG }}>
+    <div className="w-full h-full flex flex-col overflow-hidden" style={{ background: t.bg }}>
 
-      {/* ── Header ── */}
-      <div className="px-4 pt-10 pb-3" style={{ background: PAGE_BG }}>
+      {/* Header */}
+      <div className="px-4 pt-10 pb-3" style={{ background: t.bg }}>
 
-        {/* Back */}
         <button
           onClick={() => setCurrentView('piko')}
           className="flex items-center gap-1 mb-5 text-sm font-bold"
-          style={{ color: 'rgba(255,255,255,0.55)' }}
+          style={{ color: t.muted }}
         >
           <ArrowLeft size={16} />
           Back
         </button>
 
-        {/* Title + count */}
-        <h1 className="text-4xl font-extrabold leading-tight mb-0.5 text-white">
+        <h1 className="text-4xl font-extrabold leading-tight mb-0.5" style={{ color: t.title }}>
           Plant Index
         </h1>
-        <p className="text-sm font-semibold mb-4" style={{ color: 'rgba(255,255,255,0.45)' }}>
+        <p className="text-sm font-semibold mb-4" style={{ color: t.faint }}>
           {discovered} / {total} discovered
         </p>
 
         {/* Search */}
         <div className="relative mb-4">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2"
-            style={{ color: 'rgba(255,255,255,0.35)' }} />
+            style={{ color: t.searchIcon }} />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search plants…"
             className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
             style={{
-              background: 'rgba(255,255,255,0.10)',
-              color: '#fff',
-              border: '1px solid rgba(255,255,255,0.12)',
+              background: t.searchBg,
+              color: t.text,
+              border: `1px solid ${t.searchBorder}`,
             }}
           />
         </div>
 
-        {/* Filter pills — wrapping */}
+        {/* Filter pills */}
         <div className="flex flex-wrap gap-2">
           {FILTERS.map(f => (
             <button
@@ -88,9 +131,8 @@ export function PlantIndexPage() {
               onClick={() => setFilter(f)}
               className="px-4 py-1.5 rounded-full text-sm font-bold transition-all"
               style={filter === f
-                ? { background: ACTIVE_PILL, color: '#1A3828' }
-                : { background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.80)',
-                    border: '1px solid rgba(255,255,255,0.15)' }
+                ? { background: t.pillActiveBg, color: t.pillActiveText }
+                : { background: t.pillInactiveBg, color: t.pillInactiveText, border: `1px solid ${t.pillBorder}` }
               }
             >
               {f}
@@ -99,7 +141,7 @@ export function PlantIndexPage() {
         </div>
       </div>
 
-      {/* ── Grid ── */}
+      {/* Grid */}
       <div className="flex-1 overflow-y-auto px-4 pt-4 pb-28">
         <div className="grid grid-cols-2 gap-4">
           {filtered.map((plant, i) => {
@@ -117,12 +159,15 @@ export function PlantIndexPage() {
                 className="flex flex-col gap-2"
                 style={{ cursor: isFound ? 'pointer' : 'default' }}
               >
-                {/* ── Card image area ── */}
+                {/* Card image area */}
                 <div
                   className="relative w-full aspect-square rounded-2xl overflow-hidden"
-                  style={{ background: CARD_BG, border: '2px solid rgba(255,255,255,0.10)', boxShadow: '0 6px 18px rgba(0,0,0,0.35)' }}
+                  style={isFound
+                    ? { background: t.cardFoundBg, border: `2px solid ${t.border}`, boxShadow: '0 6px 18px rgba(0,0,0,0.12)' }
+                    : { background: t.cardBg,   border: `2px solid ${t.border}`, boxShadow: '0 6px 18px rgba(0,0,0,0.12)' }
+                  }
                 >
-                  {/* Plant image — full opacity if found, dark-dimmed if not */}
+                  {/* Plant image */}
                   <img
                     src={plant.image}
                     alt=""
@@ -131,9 +176,9 @@ export function PlantIndexPage() {
                     style={{ opacity: isFound ? 1 : 0.14 }}
                   />
 
-                  {/* Dark overlay for undiscovered */}
+                  {/* Overlay for undiscovered */}
                   {!isFound && (
-                    <div className="absolute inset-0" style={{ background: 'rgba(20,45,30,0.55)' }} />
+                    <div className="absolute inset-0" style={{ background: t.overlay }} />
                   )}
 
                   {/* Dark gradient for found cards */}
@@ -142,20 +187,20 @@ export function PlantIndexPage() {
                       style={{ background: 'linear-gradient(to top, rgba(10,25,18,0.80), transparent)' }} />
                   )}
 
-                  {/* Lock icon + "Not Found" label */}
+                  {/* Lock + Not Found */}
                   {!isFound && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
                       <div
                         className="w-11 h-11 rounded-full flex items-center justify-center"
-                        style={{ background: 'rgba(255,255,255,0.18)' }}
+                        style={{ background: darkMode ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.15)' }}
                       >
-                        <Lock size={20} color="white" strokeWidth={2.5} />
+                        <Lock size={20} color={darkMode ? '#fff' : '#26342F'} strokeWidth={2.5} />
                       </div>
-                      <span className="text-white font-bold text-sm">Not Found</span>
+                      <span className="font-bold text-sm" style={{ color: t.notFoundText }}>Not Found</span>
                     </div>
                   )}
 
-                  {/* Zone badge — bottom-left of card */}
+                  {/* Zone badge */}
                   <span
                     className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full text-[11px] font-bold capitalize"
                     style={{ background: badge.bg, color: badge.text }}
@@ -164,17 +209,17 @@ export function PlantIndexPage() {
                   </span>
                 </div>
 
-                {/* ── Below-card text ── */}
+                {/* Below-card text */}
                 <div className="px-1">
                   {isFound ? (
                     <>
-                      <p className="text-white font-bold text-sm leading-tight truncate">{plant.name}</p>
-                      <p className="text-xs capitalize" style={{ color: 'rgba(255,255,255,0.45)' }}>{firstTag}</p>
+                      <p className="font-bold text-sm leading-tight truncate" style={{ color: t.text }}>{plant.name}</p>
+                      <p className="text-xs capitalize" style={{ color: t.sub }}>{firstTag}</p>
                     </>
                   ) : (
                     <>
-                      <p className="font-bold text-sm" style={{ color: 'rgba(255,255,255,0.60)' }}>???</p>
-                      <p className="text-xs capitalize" style={{ color: 'rgba(255,255,255,0.35)' }}>{firstTag}</p>
+                      <p className="font-bold text-sm" style={{ color: t.muted }}>???</p>
+                      <p className="text-xs capitalize" style={{ color: t.faint }}>{firstTag}</p>
                     </>
                   )}
                 </div>
@@ -184,15 +229,14 @@ export function PlantIndexPage() {
         </div>
 
         {filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20"
-            style={{ color: 'rgba(255,255,255,0.30)' }}>
+          <div className="flex flex-col items-center justify-center py-20" style={{ color: t.faint }}>
             <Search size={44} className="mb-4" />
             <p className="font-semibold">No plants found</p>
           </div>
         )}
       </div>
 
-      {/* ── Full-screen detail ── */}
+      {/* Full-screen detail */}
       <AnimatePresence>
         {selected && (
           <motion.div
@@ -202,19 +246,12 @@ export function PlantIndexPage() {
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 220 }}
             className="fixed inset-0 z-[200] flex flex-col overflow-hidden"
-            style={{ background: '#F6F1E7' }}
+            style={{ background: t.detailBg }}
           >
-            {/* Hero photo */}
             <div className="relative w-full" style={{ height: '45%' }}>
-              <img
-                src={selected.image}
-                alt={selected.name}
-                className="w-full h-full object-cover"
-              />
-              {/* Zone colour accent bar */}
+              <img src={selected.image} alt={selected.name} className="w-full h-full object-cover" />
               <div className="absolute inset-x-0 bottom-0 h-1.5"
                 style={{ background: ZONE_DETAIL[selected.zone].bg }} />
-              {/* Close */}
               <button
                 onClick={() => setSelected(null)}
                 className="absolute top-12 right-5 w-9 h-9 rounded-full flex items-center justify-center font-bold text-lg"
@@ -224,7 +261,6 @@ export function PlantIndexPage() {
               </button>
             </div>
 
-            {/* Content */}
             <div className="flex-1 overflow-y-auto px-6 pt-6 pb-16">
               <span
                 className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4"
@@ -240,13 +276,13 @@ export function PlantIndexPage() {
               <div className="flex flex-wrap gap-2 mb-5">
                 {selected.tags.map(tag => (
                   <span key={tag} className="px-2.5 py-1 rounded-full text-xs font-bold uppercase"
-                    style={{ background: 'rgba(47,111,78,0.12)', color: '#2F6F4E' }}>
+                    style={{ background: t.tagBg, color: t.tagText }}>
                     {tag}
                   </span>
                 ))}
               </div>
 
-              <p className="text-base leading-relaxed" style={{ color: 'rgba(38,52,47,0.70)' }}>
+              <p className="text-base leading-relaxed" style={{ color: t.infoText }}>
                 {selected.info}
               </p>
             </div>
