@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { recordLogin, recordPlantCollected, recordPlantPlaced } from './weeklyTasks';
 
 export type Zone = 'uka' | 'kula' | 'kai';
 
@@ -47,6 +48,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setCollectedPlants(prev => [...prev, plant.id]);
     }
     setInventory(prev => [...prev, plant]);
+    recordPlantCollected(plant);
   };
 
   const placePlant = (plantId: string, zone: Zone) => {
@@ -54,10 +56,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (plant && plant.zone === zone) {
       setInventory(prev => prev.filter(p => p.id !== plantId));
       setPlacedPlants(prev => [...prev, { plantId, zone }]);
+      recordPlantPlaced();
       return true;
     }
     return false;
   };
+
+  /* Track app open as a login for weekly tasks */
+  useEffect(() => {
+    recordLogin();
+  }, []);
 
   return (
     <GameContext.Provider
