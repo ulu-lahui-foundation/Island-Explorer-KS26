@@ -120,7 +120,7 @@ export function PlantIndexPage() {
                 {/* ── Card image area ── */}
                 <div
                   className="relative w-full aspect-square rounded-2xl overflow-hidden"
-                  style={{ background: CARD_BG }}
+                  style={{ background: isFound ? CARD_BG : 'transparent' }}
                 >
                   {/* Plant image */}
                   <img
