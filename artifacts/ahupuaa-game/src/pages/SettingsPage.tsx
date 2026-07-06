@@ -1,6 +1,4 @@
-import { useState } from "react";
 import { useGame } from "@/lib/GameContext";
-import { t, setLang, getLang, useLang } from "@/lib/i18n";
 import { ArrowLeft, Volume2, Globe, Moon, Bell, Info } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
@@ -10,15 +8,6 @@ const ACCENT  = '#5CC882';
 
 export function SettingsPage() {
   const { setCurrentView } = useGame();
-  useLang(); // re-render on language change
-
-  const [langLabel, setLangLabel] = useState(getLang() === 'haw' ? 'HAW' : 'EN');
-
-  const toggleLanguage = () => {
-    const next = getLang() === 'en' ? 'haw' : 'en';
-    setLang(next);
-    setLangLabel(next === 'haw' ? 'HAW' : 'EN');
-  };
 
   const SettingRow = ({
     icon: Icon,
@@ -48,6 +37,8 @@ export function SettingsPage() {
 
   return (
     <div className="w-full h-full flex flex-col" style={{ background: PAGE_BG }}>
+
+      {/* Header */}
       <div className="px-4 pt-10 pb-4" style={{ background: PAGE_BG }}>
         <button
           onClick={() => setCurrentView('piko')}
@@ -55,73 +46,74 @@ export function SettingsPage() {
           style={{ color: 'rgba(255,255,255,0.55)' }}
         >
           <ArrowLeft size={16} />
-          {t('back')}
+          Back
         </button>
+
         <h1 className="text-4xl font-extrabold leading-tight text-white">
-          {t('settings_header')}
+          Settings
         </h1>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 pb-28 flex flex-col gap-5">
+
+        {/* Main options card */}
         <div className="rounded-2xl p-6 flex flex-col gap-7"
           style={{ background: CARD_BG, border: '2px solid rgba(255,255,255,0.10)', boxShadow: '0 6px 18px rgba(0,0,0,0.30)' }}>
 
           <SettingRow
             icon={Globe}
-            label={t('language')}
-            desc={t('language_desc')}
+            label="Language"
+            desc="English only"
             action={
-              <button
-                onClick={toggleLanguage}
-                className="text-sm font-bold px-3 py-1.5 rounded-lg transition-colors active:scale-95"
-                style={{ background: 'rgba(255,255,255,0.10)', color: ACCENT }}
-              >
-                {langLabel}
-              </button>
+              <span className="px-3 py-1 rounded-lg text-sm font-bold"
+                style={{ background: 'rgba(255,255,255,0.10)', color: ACCENT }}>
+                EN
+              </span>
             }
           />
 
           <SettingRow
             icon={Moon}
-            label={t('dark_mode')}
-            desc={t('dark_mode_desc')}
+            label="Dark Mode"
+            desc="Always on in this version"
             action={<Switch defaultChecked disabled />}
           />
 
           <SettingRow
             icon={Bell}
-            label={t('notifications')}
-            desc={t('notifications_desc')}
+            label="Notifications"
+            desc="Reminders for daily scan"
             action={<Switch />}
           />
 
           <SettingRow
             icon={Volume2}
-            label={t('sound')}
-            desc={t('sound_desc')}
+            label="Sound"
+            desc="Play sounds on action"
             action={<Switch defaultChecked />}
           />
 
           <SettingRow
             icon={Info}
-            label={t('about_us')}
-            desc={t('about_us_desc')}
+            label="About Us"
+            desc="Learn about the app"
             action={
               <button
                 onClick={() => setCurrentView('about')}
                 className="text-sm font-bold px-3 py-1.5 rounded-lg transition-colors"
                 style={{ background: 'rgba(255,255,255,0.10)', color: ACCENT }}
               >
-                {t('open')}
+                Open
               </button>
             }
           />
         </div>
 
+        {/* Credits */}
         <div className="text-center mt-4" style={{ color: 'rgba(255,255,255,0.30)' }}>
-          <p className="font-medium text-sm">{t('credits_line1')}</p>
-          <p className="font-bold" style={{ color: 'rgba(255,255,255,0.45)' }}>{t('credits_line2')}</p>
-          <p className="text-xs mt-4">{t('version')} 1.0.0</p>
+          <p className="font-medium text-sm">Made with aloha for</p>
+          <p className="font-bold" style={{ color: 'rgba(255,255,255,0.45)' }}>Hawaiian ecology education</p>
+          <p className="text-xs mt-4">Version 1.0.0</p>
         </div>
       </div>
     </div>

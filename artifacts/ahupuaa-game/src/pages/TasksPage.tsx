@@ -1,5 +1,4 @@
 import { useGame, PLANT_DATABASE } from "@/lib/GameContext";
-import { t, useLang } from "@/lib/i18n";
 import { ArrowLeft, CheckCircle2, Circle } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -10,7 +9,6 @@ const ACCENT   = '#5CC882';
 
 export function TasksPage() {
   const { setCurrentView, collectedPlants, placedPlants } = useGame();
-  useLang(); // re-render on language change
 
   const isTreeInUka = placedPlants.some(p => {
     const plant = PLANT_DATABASE.find(db => db.id === p.plantId);
@@ -26,11 +24,11 @@ export function TasksPage() {
     placedPlants.length === PLANT_DATABASE.length;
 
   const tasks = [
-    { key: 'task_collect_first', completed: collectedPlants.length >= 1 },
-    { key: 'task_collect_all',   completed: collectedPlants.length >= PLANT_DATABASE.length, vars: { n: PLANT_DATABASE.length } },
-    { key: 'task_tree_uka',      completed: isTreeInUka },
-    { key: 'task_build',         completed: hasAllZones },
-    { key: 'task_master',        completed: isMaster },
+    { title: "Collect your first plant",             completed: collectedPlants.length >= 1 },
+    { title: `Collect all ${PLANT_DATABASE.length} plants`, completed: collectedPlants.length >= PLANT_DATABASE.length },
+    { title: "Plant a tree in Uka",                  completed: isTreeInUka },
+    { title: "Build your ahupuaʻa",                  completed: hasAllZones },
+    { title: "Become a Plant Master",                 completed: isMaster },
   ];
 
   const completedCount = tasks.filter(t => t.completed).length;
@@ -38,6 +36,8 @@ export function TasksPage() {
 
   return (
     <div className="w-full h-full flex flex-col" style={{ background: PAGE_BG }}>
+
+      {/* Header */}
       <div className="px-4 pt-10 pb-4" style={{ background: PAGE_BG }}>
         <button
           onClick={() => setCurrentView('piko')}
@@ -45,16 +45,17 @@ export function TasksPage() {
           style={{ color: 'rgba(255,255,255,0.55)' }}
         >
           <ArrowLeft size={16} />
-          {t('back')}
+          Back
         </button>
 
         <h1 className="text-4xl font-extrabold leading-tight mb-1 text-white">
-          {t('tasks_header')}
+          Tasks
         </h1>
         <p className="text-sm font-semibold mb-4" style={{ color: 'rgba(255,255,255,0.45)' }}>
-          {completedCount} / {tasks.length} {t('completed')}
+          {completedCount} / {tasks.length} completed
         </p>
 
+        {/* Progress bar */}
         <div className="w-full h-3 rounded-full overflow-hidden"
           style={{ background: 'rgba(255,255,255,0.10)' }}>
           <motion.div
@@ -67,6 +68,7 @@ export function TasksPage() {
         </div>
       </div>
 
+      {/* Task cards */}
       <div className="flex-1 overflow-y-auto p-4 pb-28 flex flex-col gap-3">
         {tasks.map((task, i) => (
           <motion.div
@@ -86,7 +88,7 @@ export function TasksPage() {
             }
             <span className="font-bold text-base"
               style={{ color: task.completed ? '#F6F1E7' : 'rgba(255,255,255,0.50)' }}>
-              {t(task.key, task.vars)}
+              {task.title}
             </span>
           </motion.div>
         ))}

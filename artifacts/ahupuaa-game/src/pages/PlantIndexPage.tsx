@@ -1,12 +1,12 @@
-import { useState } from "react";
 import { useGame, PLANT_DATABASE, Plant } from "@/lib/GameContext";
-import { t, useLang } from "@/lib/i18n";
 import { ArrowLeft, Search, Lock } from "lucide-react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const PAGE_BG = '#245238';
-const CARD_BG = '#2A6042';
-const ACCENT  = '#5CC882';
+/* ── Design tokens ── */
+const PAGE_BG   = '#245238';
+const CARD_BG   = '#2A6042';
+const ACTIVE_PILL = '#5CC882';
 
 const ZONE_BADGE: Record<string, { bg: string; text: string }> = {
   uka:  { bg: '#8BC34A', text: '#1A3828' },
@@ -22,14 +22,14 @@ const ZONE_DETAIL: Record<string, { bg: string; text: string }> = {
 
 const FILTERS = ["All", "Fern", "Vine", "Trees", "Edible", "Lei"];
 
+/* ── Component ── */
 export function PlantIndexPage() {
   const { setCurrentView, collectedPlants } = useGame();
-  useLang(); // re-render on language change
-
   const [filter, setFilter]       = useState("All");
   const [search,  setSearch]      = useState("");
   const [selected, setSelected]   = useState<Plant | null>(null);
 
+  /* Filter */
   const filtered = PLANT_DATABASE.filter(plant => {
     if (search && !plant.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (filter !== "All" && !plant.tags.includes(filter.toLowerCase())) return false;
@@ -42,31 +42,35 @@ export function PlantIndexPage() {
   return (
     <div className="w-full h-full flex flex-col overflow-hidden" style={{ background: PAGE_BG }}>
 
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="px-4 pt-10 pb-3" style={{ background: PAGE_BG }}>
+
+        {/* Back */}
         <button
           onClick={() => setCurrentView('piko')}
           className="flex items-center gap-1 mb-5 text-sm font-bold"
           style={{ color: 'rgba(255,255,255,0.55)' }}
         >
           <ArrowLeft size={16} />
-          {t('back')}
+          Back
         </button>
 
+        {/* Title + count */}
         <h1 className="text-4xl font-extrabold leading-tight mb-0.5 text-white">
-          {t('plant_index_header')}
+          Plant Index
         </h1>
         <p className="text-sm font-semibold mb-4" style={{ color: 'rgba(255,255,255,0.45)' }}>
-          {discovered} / {total} {t('discovered')}
+          {discovered} / {total} discovered
         </p>
 
+        {/* Search */}
         <div className="relative mb-4">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2"
             style={{ color: 'rgba(255,255,255,0.35)' }} />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder={t('search')}
+            placeholder="Search plants…"
             className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
             style={{
               background: 'rgba(255,255,255,0.10)',
@@ -76,6 +80,7 @@ export function PlantIndexPage() {
           />
         </div>
 
+        {/* Filter pills — wrapping */}
         <div className="flex flex-wrap gap-2">
           {FILTERS.map(f => (
             <button
@@ -83,7 +88,7 @@ export function PlantIndexPage() {
               onClick={() => setFilter(f)}
               className="px-4 py-1.5 rounded-full text-sm font-bold transition-all"
               style={filter === f
-                ? { background: ACCENT, color: '#1A3828' }
+                ? { background: ACTIVE_PILL, color: '#1A3828' }
                 : { background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.80)',
                     border: '1px solid rgba(255,255,255,0.15)' }
               }
@@ -94,7 +99,7 @@ export function PlantIndexPage() {
         </div>
       </div>
 
-      {/* Grid */}
+      {/* ── Grid ── */}
       <div className="flex-1 overflow-y-auto px-4 pt-4 pb-28">
         <div className="grid grid-cols-2 gap-4">
           {filtered.map((plant, i) => {
@@ -112,10 +117,12 @@ export function PlantIndexPage() {
                 className="flex flex-col gap-2"
                 style={{ cursor: isFound ? 'pointer' : 'default' }}
               >
+                {/* ── Card image area ── */}
                 <div
                   className="relative w-full aspect-square rounded-2xl overflow-hidden"
                   style={{ background: CARD_BG, border: '2px solid rgba(255,255,255,0.10)', boxShadow: '0 6px 18px rgba(0,0,0,0.35)' }}
                 >
+                  {/* Plant image — full opacity if found, dark-dimmed if not */}
                   <img
                     src={plant.image}
                     alt=""
@@ -123,28 +130,41 @@ export function PlantIndexPage() {
                     className="absolute inset-0 w-full h-full object-cover"
                     style={{ opacity: isFound ? 1 : 0.14 }}
                   />
+
+                  {/* Dark overlay for undiscovered */}
                   {!isFound && (
                     <div className="absolute inset-0" style={{ background: 'rgba(20,45,30,0.55)' }} />
                   )}
+
+                  {/* Dark gradient for found cards */}
                   {isFound && (
                     <div className="absolute inset-x-0 bottom-0 h-1/2"
                       style={{ background: 'linear-gradient(to top, rgba(10,25,18,0.80), transparent)' }} />
                   )}
+
+                  {/* Lock icon + "Not Found" label */}
                   {!isFound && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                      <div className="w-11 h-11 rounded-full flex items-center justify-center"
-                        style={{ background: 'rgba(255,255,255,0.18)' }}>
+                      <div
+                        className="w-11 h-11 rounded-full flex items-center justify-center"
+                        style={{ background: 'rgba(255,255,255,0.18)' }}
+                      >
                         <Lock size={20} color="white" strokeWidth={2.5} />
                       </div>
-                      <span className="text-white font-bold text-sm">{t('not_found_card')}</span>
+                      <span className="text-white font-bold text-sm">Not Found</span>
                     </div>
                   )}
-                  <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full text-[11px] font-bold capitalize"
-                    style={{ background: badge.bg, color: badge.text }}>
+
+                  {/* Zone badge — bottom-left of card */}
+                  <span
+                    className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full text-[11px] font-bold capitalize"
+                    style={{ background: badge.bg, color: badge.text }}
+                  >
                     {plant.zone.charAt(0).toUpperCase() + plant.zone.slice(1)}
                   </span>
                 </div>
 
+                {/* ── Below-card text ── */}
                 <div className="px-1">
                   {isFound ? (
                     <>
@@ -167,12 +187,12 @@ export function PlantIndexPage() {
           <div className="flex flex-col items-center justify-center py-20"
             style={{ color: 'rgba(255,255,255,0.30)' }}>
             <Search size={44} className="mb-4" />
-            <p className="font-semibold">{t('no_results')}</p>
+            <p className="font-semibold">No plants found</p>
           </div>
         )}
       </div>
 
-      {/* Full-screen detail */}
+      {/* ── Full-screen detail ── */}
       <AnimatePresence>
         {selected && (
           <motion.div
@@ -184,10 +204,17 @@ export function PlantIndexPage() {
             className="fixed inset-0 z-[200] flex flex-col overflow-hidden"
             style={{ background: '#F6F1E7' }}
           >
+            {/* Hero photo */}
             <div className="relative w-full" style={{ height: '45%' }}>
-              <img src={selected.image} alt={selected.name} className="w-full h-full object-cover" />
+              <img
+                src={selected.image}
+                alt={selected.name}
+                className="w-full h-full object-cover"
+              />
+              {/* Zone colour accent bar */}
               <div className="absolute inset-x-0 bottom-0 h-1.5"
                 style={{ background: ZONE_DETAIL[selected.zone].bg }} />
+              {/* Close */}
               <button
                 onClick={() => setSelected(null)}
                 className="absolute top-12 right-5 w-9 h-9 rounded-full flex items-center justify-center font-bold text-lg"
@@ -196,19 +223,32 @@ export function PlantIndexPage() {
                 ✕
               </button>
             </div>
+
+            {/* Content */}
             <div className="flex-1 overflow-y-auto px-6 pt-6 pb-16">
-              <span className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4"
-                style={{ background: ZONE_DETAIL[selected.zone].bg, color: ZONE_DETAIL[selected.zone].text }}>
+              <span
+                className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-4"
+                style={{ background: ZONE_DETAIL[selected.zone].bg, color: ZONE_DETAIL[selected.zone].text }}
+              >
                 {selected.zone.charAt(0).toUpperCase() + selected.zone.slice(1)} Zone
               </span>
-              <h2 className="text-4xl font-extrabold mb-3 leading-tight" style={{ color: '#26342F' }}>{selected.name}</h2>
+
+              <h2 className="text-4xl font-extrabold mb-3 leading-tight" style={{ color: '#26342F' }}>
+                {selected.name}
+              </h2>
+
               <div className="flex flex-wrap gap-2 mb-5">
                 {selected.tags.map(tag => (
                   <span key={tag} className="px-2.5 py-1 rounded-full text-xs font-bold uppercase"
-                    style={{ background: 'rgba(47,111,78,0.12)', color: '#2F6F4E' }}>{tag}</span>
+                    style={{ background: 'rgba(47,111,78,0.12)', color: '#2F6F4E' }}>
+                    {tag}
+                  </span>
                 ))}
               </div>
-              <p className="text-base leading-relaxed" style={{ color: 'rgba(38,52,47,0.70)' }}>{selected.info}</p>
+
+              <p className="text-base leading-relaxed" style={{ color: 'rgba(38,52,47,0.70)' }}>
+                {selected.info}
+              </p>
             </div>
           </motion.div>
         )}

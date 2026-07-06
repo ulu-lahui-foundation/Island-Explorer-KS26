@@ -1,5 +1,4 @@
 import { useGame } from "@/lib/GameContext";
-import { t, useLang } from "@/lib/i18n";
 import { Book, Star, Settings } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -8,7 +7,6 @@ const ACCENT   = '#5CC882';
 
 export function PikoPage() {
   const { setCurrentView } = useGame();
-  useLang(); // re-render on language change
 
   const container = {
     hidden: { opacity: 0 },
@@ -25,9 +23,9 @@ export function PikoPage() {
       style={{ background: '#245238' }}>
 
       <div className="pt-8 pb-4 px-2">
-        <h1 className="text-4xl font-extrabold text-white tracking-tight">{t('piko_title')}</h1>
+        <h1 className="text-4xl font-extrabold text-white tracking-tight">Piko</h1>
         <p className="font-semibold mt-1" style={{ color: 'rgba(255,255,255,0.45)' }}>
-          {t('piko_subtitle')}
+          Your hub for knowledge and progress.
         </p>
       </div>
 
@@ -37,6 +35,7 @@ export function PikoPage() {
         animate="show"
         className="flex-1 flex flex-col gap-4"
       >
+        {/* Plant Index */}
         <motion.button
           variants={item}
           onClick={() => setCurrentView('plant_index')}
@@ -49,11 +48,12 @@ export function PikoPage() {
         >
           <Book className="absolute top-8 right-8 w-24 h-24 text-white/15 group-hover:rotate-12 transition-transform duration-500" />
           <div className="text-left text-white z-10">
-            <h2 className="text-3xl font-bold mb-1">{t('plant_index')}</h2>
-            <p className="font-medium text-base" style={{ color: 'rgba(255,255,255,0.65)' }}>{t('plant_index_sub')}</p>
+            <h2 className="text-3xl font-bold mb-1">Plant Index</h2>
+            <p className="font-medium text-base" style={{ color: 'rgba(255,255,255,0.65)' }}>View your collection</p>
           </div>
         </motion.button>
 
+        {/* Tasks */}
         <motion.button
           variants={item}
           onClick={() => setCurrentView('tasks')}
@@ -66,11 +66,12 @@ export function PikoPage() {
         >
           <Star className="absolute top-8 right-8 w-24 h-24 text-white/15 group-hover:rotate-12 transition-transform duration-500" />
           <div className="text-left text-white z-10">
-            <h2 className="text-3xl font-bold mb-1">{t('tasks')}</h2>
-            <p className="font-medium text-base" style={{ color: 'rgba(255,255,255,0.65)' }}>{t('tasks_sub')}</p>
+            <h2 className="text-3xl font-bold mb-1">Tasks</h2>
+            <p className="font-medium text-base" style={{ color: 'rgba(255,255,255,0.65)' }}>Track your progress</p>
           </div>
         </motion.button>
 
+        {/* Settings */}
         <motion.button
           variants={item}
           onClick={() => setCurrentView('settings')}
@@ -83,8 +84,8 @@ export function PikoPage() {
         >
           <Settings className="absolute top-8 right-8 w-24 h-24 text-white/15 group-hover:rotate-12 transition-transform duration-500" />
           <div className="text-left text-white z-10">
-            <h2 className="text-3xl font-bold mb-1">{t('settings')}</h2>
-            <p className="font-medium text-base" style={{ color: 'rgba(255,255,255,0.65)' }}>{t('settings_sub')}</p>
+            <h2 className="text-3xl font-bold mb-1">Settings</h2>
+            <p className="font-medium text-base" style={{ color: 'rgba(255,255,255,0.65)' }}>App options</p>
           </div>
         </motion.button>
       </motion.div>
