@@ -75,7 +75,6 @@ export function MapPage() {
     // Scene
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb);
-    scene.fog = new THREE.FogExp2(0x87ceeb, 0.002);
 
     const camera = new THREE.PerspectiveCamera(
       45,
