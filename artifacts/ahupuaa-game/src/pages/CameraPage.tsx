@@ -287,7 +287,7 @@ export function CameraPage() {
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 220 }}
             className="absolute inset-x-0 bottom-0 z-50 rounded-t-[2rem] overflow-hidden flex flex-col"
-            style={{ background: '#F6F1E7', height: '52%' }}
+            style={{ background: '#F6F1E7', height: '75%' }}
           >
             {/* Plant image strip */}
             <div className="relative h-28 flex-shrink-0 overflow-hidden rounded-t-[2rem]">
@@ -357,7 +357,7 @@ export function CameraPage() {
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 220 }}
             className="absolute inset-x-0 bottom-0 z-50 rounded-t-[2rem] overflow-hidden flex flex-col"
-            style={{ background: '#F6F1E7', height: '52%' }}
+            style={{ background: '#F6F1E7', height: '75%' }}
           >
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center pb-4">
               <div className="w-16 h-16 rounded-full bg-[#E8E4DB] flex items-center justify-center mb-4">
