@@ -725,6 +725,93 @@ export function MapPage() {
       return treeGroup;
     }
 
+    // ── Naupaka Kahakai procedural bush ──
+    function createNaupakaBush() {
+      const bushGroup = new THREE.Group();
+      const stemMaterial = new THREE.MeshStandardMaterial({ color: 0x9c9681, roughness: 0.9 });
+      const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x6e9438, roughness: 0.5 });
+      const flowerMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+      const maxDepth = 3;
+
+      function buildStem(parent: THREE.Object3D, length: number, radius: number, depth: number) {
+        const stemGroup = new THREE.Group();
+        parent.add(stemGroup);
+        const stemGeo = new THREE.CylinderGeometry(radius * 0.7, radius, length, 8);
+        const stemMesh = new THREE.Mesh(stemGeo, stemMaterial);
+        stemMesh.position.y = length / 2;
+        stemMesh.castShadow = true;
+        stemMesh.receiveShadow = true;
+        stemGroup.add(stemMesh);
+        const tip = new THREE.Group();
+        tip.position.y = length;
+        stemGroup.add(tip);
+        if (depth > 0) {
+          const numChildren = 2 + Math.floor(Math.random() * 3);
+          for (let i = 0; i < numChildren; i++) {
+            const childRadius = radius * 0.75;
+            const childLength = length * (0.7 + Math.random() * 0.3);
+            const angleX = (Math.random() - 0.5) * 1.0;
+            const angleZ = (Math.random() - 0.5) * 1.0;
+            const angleY = Math.random() * Math.PI * 2;
+            const childStem = buildStem(tip, childLength, childRadius, depth - 1);
+            childStem.rotation.set(angleX, angleY, angleZ);
+          }
+        } else {
+          addFoliageAndFlowers(tip);
+        }
+        return stemGroup;
+      }
+
+      function addFoliageAndFlowers(parent: THREE.Object3D) {
+        const numLeaves = 6 + Math.floor(Math.random() * 5);
+        const baseLeafGeo = new THREE.SphereGeometry(0.5, 8, 8);
+        baseLeafGeo.scale(0.8, 1.5, 0.2);
+        baseLeafGeo.translate(0, 0.75, 0);
+        for (let l = 0; l < numLeaves; l++) {
+          const leafMesh = new THREE.Mesh(baseLeafGeo, leafMaterial);
+          const angle = (l / numLeaves) * Math.PI * 2;
+          leafMesh.rotation.y = angle;
+          leafMesh.rotation.x = 0.5 + Math.random() * 0.5;
+          leafMesh.castShadow = true;
+          parent.add(leafMesh);
+        }
+        if (Math.random() > 0.1) {
+          const numFlowers = 2 + Math.floor(Math.random() * 4);
+          const petalGeo = new THREE.SphereGeometry(0.15, 6, 6);
+          petalGeo.scale(0.5, 2.0, 0.2);
+          petalGeo.translate(0, 0.25, 0);
+          for (let f = 0; f < numFlowers; f++) {
+            const flowerGroup = new THREE.Group();
+            flowerGroup.position.set(
+              (Math.random() - 0.5) * 0.4,
+              0.2 + Math.random() * 0.4,
+              (Math.random() - 0.5) * 0.4
+            );
+            const numPetals = 5;
+            for (let p = 0; p < numPetals; p++) {
+              const petal = new THREE.Mesh(petalGeo, flowerMaterial);
+              const petalAngle = (p / (numPetals - 1)) * Math.PI;
+              petal.rotation.z = petalAngle - (Math.PI / 2);
+              petal.rotation.x = 0.5;
+              flowerGroup.add(petal);
+            }
+            flowerGroup.rotation.y = Math.random() * Math.PI * 2;
+            parent.add(flowerGroup);
+          }
+        }
+      }
+
+      const numMainStems = 5 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < numMainStems; i++) {
+        const length = 1.5 + Math.random() * 1.0;
+        const mainStem = buildStem(bushGroup, length, 0.3, maxDepth);
+        const baseAngle = (i / numMainStems) * Math.PI * 2;
+        mainStem.rotation.y = baseAngle;
+        mainStem.rotation.z = 0.4 + Math.random() * 0.6;
+      }
+      return bushGroup;
+    }
+
     const spawnPlant3D = (plantId: string, position: THREE.Vector3) => {
       const group = new THREE.Group();
       group.position.copy(position);
@@ -760,8 +847,13 @@ export function MapPage() {
         const ohia = createOhiaTree();
         group.add(ohia);
         group.scale.set(5, 5, 5); // smaller scale for the larger tree geometry
-      } else if (plantId === "pohinahina" || plantId === "naupaka") {
-        // Low shrub
+      } else if (plantId === "naupaka") {
+        // Naupaka Kahakai procedural bush with half-flowers
+        const naupaka = createNaupakaBush();
+        group.add(naupaka);
+        group.scale.set(8, 8, 8);
+      } else if (plantId === "pohinahina") {
+        // Low shrub (placeholder for now)
         const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4, 0), plantMat);
         bush.position.y = 0.25;
         bush.scale.set(1.2, 0.6, 1.2);
