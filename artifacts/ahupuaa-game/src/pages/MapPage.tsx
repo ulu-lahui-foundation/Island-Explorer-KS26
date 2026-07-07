@@ -641,7 +641,7 @@ export function MapPage() {
       const x = (Math.random() - 0.5) * 400;
       const z = 85 + Math.random() * 400;
       oceanParticlePos[i * 3] = x;
-      oceanParticlePos[i * 3 + 1] = 0;
+      oceanParticlePos[i * 3 + 1] = -1.5 + (Math.random() - 0.5) * 1.5;
       oceanParticlePos[i * 3 + 2] = z;
       oceanParticleData.push({ x, z, phase: Math.random() * Math.PI * 2 });
     }
@@ -887,11 +887,11 @@ export function MapPage() {
       }
       rPos.needsUpdate = true;
 
-      // Ocean particles
+      // Ocean particles — keep underwater, bob slightly
       const oPos = oceanParticleGeo.attributes.position;
       for (let i = 0; i < oceanParticleCount; i++) {
-        const y = Math.sin(oceanParticleData[i].x * 0.1 + time + oceanParticleData[i].phase) * 0.3;
-        oPos.setY(i, y);
+        const bob = Math.sin(oceanParticleData[i].x * 0.1 + time + oceanParticleData[i].phase) * 0.3;
+        oPos.setY(i, -1.5 + bob);
       }
       oPos.needsUpdate = true;
 
