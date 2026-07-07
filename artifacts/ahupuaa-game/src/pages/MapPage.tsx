@@ -101,6 +101,11 @@ export function MapPage() {
     controls.zoomSpeed = 5;
     controls.minAzimuthAngle = -Math.PI / 2.2;
     controls.maxAzimuthAngle = Math.PI / 2.2;
+    // Mobile: one-finger pan, two-finger pinch-to-zoom
+    controls.touches = {
+      ONE: THREE.TOUCH.PAN,
+      TWO: THREE.TOUCH.DOLLY_PAN,
+    };
 
     // Celestial
     const sunMesh = new THREE.Mesh(
