@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { useGame, Zone, PLANT_DATABASE, Plant } from "@/lib/GameContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock10, Leaf } from "lucide-react";
+import { Leaf } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -660,7 +660,7 @@ export function MapPage() {
     const spawnPlant3D = (plantId: string, position: THREE.Vector3) => {
       const group = new THREE.Group();
       group.position.copy(position);
-      group.scale.set(Clock 10, 10, 10);
+      group.scale.set(50, 50, 50);
 
       // Simple 3D plant representation based on ID
       const plantMat = new THREE.MeshStandardMaterial({ color: 0x4CAF50, roughness: 0.7, flatShading: true });
