@@ -633,23 +633,6 @@ export function MapPage() {
     const riverParticles = new THREE.Points(riverParticleGeo, riverParticleMat);
     scene.add(riverParticles);
 
-    const oceanParticleCount = 800;
-    const oceanParticleGeo = new THREE.BufferGeometry();
-    const oceanParticlePos = new Float32Array(oceanParticleCount * 3);
-    const oceanParticleData: any[] = [];
-    for (let i = 0; i < oceanParticleCount; i++) {
-      const x = (Math.random() - 0.5) * 400;
-      const z = 85 + Math.random() * 400;
-      oceanParticlePos[i * 3] = x;
-      oceanParticlePos[i * 3 + 1] = -1.5 + (Math.random() - 0.5) * 1.5;
-      oceanParticlePos[i * 3 + 2] = z;
-      oceanParticleData.push({ x, z, phase: Math.random() * Math.PI * 2 });
-    }
-    oceanParticleGeo.setAttribute("position", new THREE.BufferAttribute(oceanParticlePos, 3));
-    const oceanParticleMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.8, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending });
-    const oceanParticles = new THREE.Points(oceanParticleGeo, oceanParticleMat);
-    scene.add(oceanParticles);
-
     // ── Camera position ──
     camera.position.set(0, 100, 200);
     controls.target.set(0, 30, 0);
@@ -887,14 +870,6 @@ export function MapPage() {
       }
       rPos.needsUpdate = true;
 
-      // Ocean particles — keep underwater, bob slightly
-      const oPos = oceanParticleGeo.attributes.position;
-      for (let i = 0; i < oceanParticleCount; i++) {
-        const bob = Math.sin(oceanParticleData[i].x * 0.1 + time + oceanParticleData[i].phase) * 0.3;
-        oPos.setY(i, -1.5 + bob);
-      }
-      oPos.needsUpdate = true;
-
       renderer.render(scene, camera);
     };
     animate();
@@ -1116,6 +1091,22 @@ export function MapPage() {
               style={{ background: "#a8d8f0", transform: "rotate(5deg)" }} />
             <div className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold z-10"
               style={{ background: "rgba(246,241,231,0.20)", backdropFilter: "blur(8px)", color: "#F6F1E7" }}>Kai</div>
+            {/* 2D water sparkles */}
+            <div className="absolute inset-0 pointer-events-none z-0">
+              {Array.from({ length: 18 }).map((_, i) => (
+                <div key={i} className="absolute rounded-full"
+                  style={{
+                    width: 2 + Math.random() * 2,
+                    height: 2 + Math.random() * 2,
+                    left: `${Math.random() * 100}%`,
+                    top: `${10 + Math.random() * 90}%`,
+                    background: 'rgba(255,255,255,0.6)',
+                    animation: `kaiSparkle ${1.5 + Math.random() * 2.5}s ease-in-out infinite`,
+                    animationDelay: `${Math.random() * 3}s`,
+                  }}
+                />
+              ))}
+            </div>
           </div>
         </div>
 
