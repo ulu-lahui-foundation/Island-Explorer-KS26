@@ -648,6 +648,83 @@ export function MapPage() {
 
     // ── Spawn helpers ──
     const spawnedPlants: THREE.Group[] = [];
+
+    // ── Ohia Lehua procedural tree ──
+    function createOhiaTree() {
+      const treeGroup = new THREE.Group();
+      const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8a8377, roughness: 1.0 });
+      const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x2b3d26, roughness: 0.9 });
+      const blossomMaterial = new THREE.MeshStandardMaterial({ color: 0xe61515, roughness: 0.4 });
+      const maxDepth = 4;
+
+      function buildBranch(parent: THREE.Object3D, length: number, radius: number, depth: number) {
+        const branchGroup = new THREE.Group();
+        parent.add(branchGroup);
+        const branchGeo = new THREE.CylinderGeometry(radius * 0.65, radius, length, 12);
+        const branchMesh = new THREE.Mesh(branchGeo, trunkMaterial);
+        branchMesh.position.y = length / 2;
+        branchMesh.castShadow = true;
+        branchMesh.receiveShadow = true;
+        branchGroup.add(branchMesh);
+        const tip = new THREE.Group();
+        tip.position.y = length;
+        branchGroup.add(tip);
+        if (depth > 0) {
+          const numChildren = 2 + Math.floor(Math.random() * 3);
+          for (let i = 0; i < numChildren; i++) {
+            const childRadius = radius * 0.7;
+            const childLength = length * (0.6 + Math.random() * 0.3);
+            const angleX = (Math.random() - 0.5) * 1.5;
+            const angleZ = (Math.random() - 0.5) * 1.5;
+            const angleY = Math.random() * Math.PI * 2;
+            const childBranch = buildBranch(tip, childLength, childRadius, depth - 1);
+            childBranch.rotation.set(angleX, angleY, angleZ);
+          }
+        } else {
+          addFoliage(tip);
+        }
+        return branchGroup;
+      }
+
+      function addFoliage(parent: THREE.Object3D) {
+        const numLeafClusters = 8 + Math.floor(Math.random() * 6);
+        for (let l = 0; l < numLeafClusters; l++) {
+          const leafRadius = 0.4 + Math.random() * 0.6;
+          const leafGeo = new THREE.SphereGeometry(leafRadius, 5, 5);
+          const leafMesh = new THREE.Mesh(leafGeo, leafMaterial);
+          leafMesh.position.set(
+            (Math.random() - 0.5) * 2.0,
+            (Math.random() - 0.5) * 1.5,
+            (Math.random() - 0.5) * 2.0
+          );
+          leafMesh.castShadow = true;
+          parent.add(leafMesh);
+        }
+        const numBlossoms = 4 + Math.floor(Math.random() * 5);
+        const stamenGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.6, 3);
+        stamenGeo.translate(0, 0.3, 0);
+        for (let i = 0; i < numBlossoms; i++) {
+          const blossomGroup = new THREE.Group();
+          blossomGroup.position.set(
+            (Math.random() - 0.5) * 2.5,
+            0.5 + Math.random() * 1.5,
+            (Math.random() - 0.5) * 2.5
+          );
+          const numStamens = 30 + Math.floor(Math.random() * 20);
+          for (let s = 0; s < numStamens; s++) {
+            const stamen = new THREE.Mesh(stamenGeo, blossomMaterial);
+            stamen.rotation.x = Math.random() * Math.PI;
+            stamen.rotation.y = Math.random() * Math.PI * 2;
+            blossomGroup.add(stamen);
+          }
+          parent.add(blossomGroup);
+        }
+      }
+
+      buildBranch(treeGroup, 4.0, 0.8, maxDepth);
+      return treeGroup;
+    }
+
     const spawnPlant3D = (plantId: string, position: THREE.Vector3) => {
       const group = new THREE.Group();
       group.position.copy(position);
@@ -679,15 +756,10 @@ export function MapPage() {
         canopy.position.y = 1.6;
         group.add(canopy);
       } else if (plantId === "ohia") {
-        // Tree with red flowers
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 1.2, 6), trunkMat);
-        trunk.position.y = 0.6;
-        group.add(trunk);
-        for (let i = 0; i < 5; i++) {
-          const flower = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), flowerMat);
-          flower.position.set((Math.random() - 0.5) * 0.6, 1.2 + Math.random() * 0.3, (Math.random() - 0.5) * 0.6);
-          group.add(flower);
-        }
+        // ʻŌhiʻa lehua procedural tree
+        const ohia = createOhiaTree();
+        group.add(ohia);
+        group.scale.set(5, 5, 5); // smaller scale for the larger tree geometry
       } else if (plantId === "pohinahina" || plantId === "naupaka") {
         // Low shrub
         const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4, 0), plantMat);
