@@ -60,6 +60,7 @@ export function MapPage() {
     mouse: THREE.Vector2;
     cleanup: () => void;
     spawnPlant3D: (plantId: string, position: THREE.Vector3) => void;
+    removePlant3D: (index: number) => void;
   } | null>(null);
 
   /* ── Init Three.js scene ── */
@@ -773,6 +774,14 @@ export function MapPage() {
       spawnedPlants.push(group);
     };
 
+    const removePlant3D = (index: number) => {
+      const group = spawnedPlants[index];
+      if (group) {
+        scene.remove(group);
+        spawnedPlants.splice(index, 1);
+      }
+    };
+
     // ── Raycaster for drop placement ──
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
@@ -890,7 +899,7 @@ export function MapPage() {
     };
     window.addEventListener("resize", onResize);
 
-    sceneRef.current = { scene, camera, renderer, controls, terrain, backdrop, raycaster, mouse, spawnPlant3D, cleanup: () => {
+    sceneRef.current = { scene, camera, renderer, controls, terrain, backdrop, raycaster, mouse, spawnPlant3D, removePlant3D, cleanup: () => {
       cancelAnimationFrame(animId);
       window.removeEventListener("resize", onResize);
       controls.dispose();
@@ -1083,7 +1092,10 @@ export function MapPage() {
           {/* Dig Up button */}
           <button
             onClick={() => {
-              if (selectedPlantIdx !== null) removePlacedPlant(selectedPlantIdx);
+              if (selectedPlantIdx !== null) {
+                sceneRef.current?.removePlant3D(selectedPlantIdx);
+                removePlacedPlant(selectedPlantIdx);
+              }
               setSelectedPlantIdx(null);
               toast({ title: "Plant dug up", description: `${selectedPlantData.name} has been removed.` });
             }}
