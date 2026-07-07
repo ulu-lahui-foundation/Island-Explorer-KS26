@@ -211,22 +211,22 @@ export function CameraPage() {
       {/* ── Tall corner brackets + scanning line ── */}
       {cameraReady && scanState === "idle" && (
         <>
-          {/* Corner brackets — compact frame, clear of UI */}
-          <div className="absolute top-24 bottom-36 left-10 right-10 flex flex-col justify-center z-10">
+          {/* Corner brackets — 40 % smaller frame, clear of UI */}
+          <div className="absolute top-32 bottom-44 left-20 right-20 flex flex-col justify-center z-10">
             <div className="flex justify-between">
-              <div className="w-6 h-6 border-l-2 border-t-2 rounded-tl-md border-[#5CC882]" />
-              <div className="w-6 h-6 border-r-2 border-t-2 rounded-tr-md border-[#5CC882]" />
+              <div className="w-4 h-4 border-l border-t rounded-tl-sm border-[#5CC882]" />
+              <div className="w-4 h-4 border-r border-t rounded-tr-sm border-[#5CC882]" />
             </div>
             <div className="flex-1" />
             <div className="flex justify-between">
-              <div className="w-6 h-6 border-l-2 border-b-2 rounded-bl-md border-[#5CC882]" />
-              <div className="w-6 h-6 border-r-2 border-b-2 rounded-br-md border-[#5CC882]" />
+              <div className="w-4 h-4 border-l border-b rounded-bl-sm border-[#5CC882]" />
+              <div className="w-4 h-4 border-r border-b rounded-br-sm border-[#5CC882]" />
             </div>
           </div>
 
-          {/* Sweeping scan line — animate inside the frame */}
+          {/* Sweeping scan line — animate inside the shrunken frame */}
           <motion.div
-            className="absolute left-10 right-10 h-0.5 bg-[#5CC882]/60 rounded-full z-10"
+            className="absolute left-20 right-20 h-0.5 bg-[#5CC882]/60 rounded-full z-10"
             initial={{ top: '28%' }}
             animate={{ top: ['28%', '72%', '28%'] }}
             transition={{ duration: 3, ease: 'easeInOut', repeat: Infinity }}
@@ -238,7 +238,7 @@ export function CameraPage() {
       {cameraReady && scanState === "idle" && (
         <button
           onClick={takeSnapshot}
-          className="absolute bottom-28 left-1/2 -translate-x-1/2 z-20 w-20 h-20 rounded-full bg-white shadow-lg active:scale-95 transition-transform"
+          className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 w-14 h-14 rounded-full bg-white shadow-lg active:scale-95 transition-transform"
         />
       )}
 
