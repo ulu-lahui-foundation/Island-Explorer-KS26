@@ -46,6 +46,7 @@ interface GameContextType {
   placedPlants: PlacedPlant[];
   collectPlant: (plant: Plant) => void;
   placePlant: (plantId: string, zone: Zone, x?: number, y?: number, wx?: number, wy?: number, wz?: number) => boolean;
+  removePlacedPlant: (index: number) => void;
   darkMode: boolean;
   toggleDarkMode: () => void;
   weeklyState: WeeklyState;
@@ -122,6 +123,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     });
   }, [collectedPlants, placedPlants]);
 
+  const removePlacedPlant = useCallback((index: number) => {
+    setPlacedPlants(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
   const claimWeeklyReward = useCallback(() => {
     const limu = PLANT_DATABASE.find(p => p.id === 'limu');
     if (!limu) return;
@@ -149,6 +154,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         placedPlants,
         collectPlant,
         placePlant,
+        removePlacedPlant,
         darkMode,
         toggleDarkMode,
         weeklyState,
