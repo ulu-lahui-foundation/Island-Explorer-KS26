@@ -660,6 +660,7 @@ export function MapPage() {
     const spawnPlant3D = (plantId: string, position: THREE.Vector3) => {
       const group = new THREE.Group();
       group.position.copy(position);
+      group.scale.set(100, 100, 100);
 
       // Simple 3D plant representation based on ID
       const plantMat = new THREE.MeshStandardMaterial({ color: 0x4CAF50, roughness: 0.7, flatShading: true });
