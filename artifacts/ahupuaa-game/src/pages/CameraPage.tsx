@@ -1,7 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useGame, PLANT_DATABASE, Plant } from "@/lib/GameContext";
 import { PLANT_ALIASES } from "@/lib/plantData";
-import { Camera as CameraIcon, Check, RefreshCw, Zap } from "lucide-react";
+import { Check, RefreshCw, Zap, Frown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ---------------------------------------------------------------------------
@@ -286,112 +286,99 @@ export function CameraPage() {
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 220 }}
-            className="absolute inset-x-0 bottom-0 z-50 rounded-t-[2rem] overflow-hidden"
-            style={{ background: '#F6F1E7', maxHeight: '60%' }}
+            className="absolute inset-x-0 bottom-0 z-50 rounded-t-[2rem] overflow-hidden flex flex-col"
+            style={{ background: '#F6F1E7', height: '52%' }}
           >
-            <div className="p-6 pb-12 flex flex-col items-center text-center">
-              <div className="w-20 h-20 rounded-full bg-[#5CC882] flex items-center justify-center mb-3">
-                <Check size={36} color="#1A3828" />
+            {/* Plant image strip */}
+            <div className="relative h-28 flex-shrink-0 overflow-hidden rounded-t-[2rem]">
+              <img
+                src={foundPlant.image}
+                alt={foundPlant.name}
+                className="w-full h-full object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#F6F1E7] to-transparent" />
+              <div className="absolute bottom-2 inset-x-0 flex items-end justify-center gap-2 px-5">
+                <h2 className="text-[#26342F] font-extrabold text-2xl leading-tight">{foundPlant.name}</h2>
+                <div className="w-6 h-6 rounded-full bg-[#5CC882] flex items-center justify-center flex-shrink-0 mb-0.5">
+                  <Check size={14} color="#1A3828" />
+                </div>
               </div>
-              <p className="text-[#2F6F4E] font-bold text-sm uppercase tracking-wider mb-1">
-                Plant Found
-              </p>
-              <h2 className="text-[#26342F] font-extrabold text-3xl mb-1">
-                {foundPlant.name}
-              </h2>
-              <p className="text-[#26342F]/60 text-sm font-semibold italic mb-4">
-                {foundPlant.scientific}
-              </p>
-              <p className="text-[#26342F]/70 text-sm leading-relaxed max-w-xs mb-6">
-                {foundPlant.description}
-              </p>
-              {debugLabel && (
-                <p className="text-[#26342F]/40 text-xs font-medium mb-4">{debugLabel}</p>
-              )}
-              <button
-                onClick={collect}
-                className="w-full py-3.5 rounded-2xl bg-[#2F6F4E] text-white font-extrabold text-base shadow-lg active:scale-[0.98] transition-transform"
-              >
-                Collect Plant
-              </button>
-              <button
-                onClick={closeResult}
-                className="mt-3 text-[#26342F]/50 font-semibold text-sm"
-              >
-                Dismiss
-              </button>
+            </div>
+
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto px-5 pt-1 pb-4">
+              <p className="text-[#26342F]/50 text-xs font-semibold italic mb-3">{foundPlant.scientific}</p>
+
+              {/* Category tags */}
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-[#2F6F4E]/10 text-[#2F6F4E]">
+                  {foundPlant.zone === 'uka' ? 'Uka · Mountain' : foundPlant.zone === 'kula' ? 'Kula · Lowland' : 'Kai · Coastal'}
+                </span>
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-[#5CC882]/15 text-[#2F6F4E]">
+                  {foundPlant.category}
+                </span>
+                {foundPlant.rarity && foundPlant.rarity.toLowerCase().includes('rare') && (
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700">
+                    Rare
+                  </span>
+                )}
+              </div>
+
+              {/* Description */}
+              <p className="text-[#26342F]/70 text-xs leading-relaxed mb-4">{foundPlant.description}</p>
+
+              {/* Buttons */}
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={collect}
+                  className="w-full py-3 rounded-2xl bg-[#2F6F4E] text-white font-extrabold text-sm shadow-md active:scale-[0.98] transition-transform"
+                >
+                  Add to Inventory
+                </button>
+                <button
+                  onClick={closeResult}
+                  className="w-full py-3 rounded-2xl border border-[#26342F]/20 text-[#26342F]/60 font-bold text-sm active:scale-[0.98] transition-transform"
+                >
+                  Discard
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Result overlay — not found */}
+      {/* Result overlay — not found / error */}
       <AnimatePresence>
-        {scanState === "unknown" && (
+        {(scanState === "unknown" || scanState === "error") && (
           <motion.div
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 220 }}
-            className="absolute inset-x-0 bottom-0 z-50 rounded-t-[2rem] overflow-hidden"
-            style={{ background: '#F6F1E7', maxHeight: '60%' }}
+            className="absolute inset-x-0 bottom-0 z-50 rounded-t-[2rem] overflow-hidden flex flex-col"
+            style={{ background: '#F6F1E7', height: '52%' }}
           >
-            <div className="p-6 pb-12 flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-full bg-[#E8E4DB] flex items-center justify-center mb-3">
-                <CameraIcon size={28} color="#999" />
+            <div className="flex-1 flex flex-col items-center justify-center px-6 text-center pb-4">
+              <div className="w-16 h-16 rounded-full bg-[#E8E4DB] flex items-center justify-center mb-4">
+                <Frown size={32} color="#999" />
               </div>
-              <p className="text-[#999] font-bold text-sm uppercase tracking-wider mb-1">
-                No Match
-              </p>
-              <h2 className="text-[#26342F] font-extrabold text-2xl mb-2">
-                Couldn\u2019t identify this plant
+              <h2 className="text-[#26342F] font-extrabold text-xl mb-2">
+                {scanState === "error" ? "Something went wrong" : "Plant not identified"}
               </h2>
-              <p className="text-[#26342F]/60 text-sm leading-relaxed max-w-xs mb-5">
-                Try again with better lighting or a closer angle.
+              <p className="text-[#26342F]/60 text-sm leading-relaxed max-w-xs mb-6">
+                {scanState === "error"
+                  ? "Couldn\u2019t reach the identification server. Check your connection and try again."
+                  : "Try again with better lighting, a closer angle, or make sure the leaf fills the frame."}
               </p>
               {debugLabel && (
-                <p className="text-[#26342F]/40 text-xs font-medium mb-4">{debugLabel}</p>
+                <p className="text-[#26342F]/35 text-xs mb-5">{debugLabel}</p>
               )}
               <button
                 onClick={closeResult}
                 className="w-full py-3.5 rounded-2xl bg-[#2F6F4E] text-white font-extrabold text-base shadow-lg active:scale-[0.98] transition-transform"
               >
-                Scan Again
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Error overlay */}
-      <AnimatePresence>
-        {scanState === "error" && (
-          <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 28, stiffness: 220 }}
-            className="absolute inset-x-0 bottom-0 z-50 rounded-t-[2rem] overflow-hidden"
-            style={{ background: '#F6F1E7', maxHeight: '60%' }}
-          >
-            <div className="p-6 pb-12 flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-full bg-[#E8E4DB] flex items-center justify-center mb-3">
-                <Zap size={28} color="#999" />
-              </div>
-              <p className="text-[#999] font-bold text-sm uppercase tracking-wider mb-1">
-                Error
-              </p>
-              <h2 className="text-[#26342F] font-extrabold text-2xl mb-2">
-                Something went wrong
-              </h2>
-              <p className="text-[#26342F]/60 text-sm leading-relaxed max-w-xs mb-5">
-                Couldn\u2019t reach the plant identification server. Check your connection and try again.
-              </p>
-              <button
-                onClick={closeResult}
-                className="w-full py-3.5 rounded-2xl bg-[#2F6F4E] text-white font-extrabold text-base shadow-lg active:scale-[0.98] transition-transform"
-              >
-                Try Again
+                Back to Scan
               </button>
             </div>
           </motion.div>
