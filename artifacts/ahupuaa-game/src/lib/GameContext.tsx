@@ -95,7 +95,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const placePlant = (plantId: string, zone: Zone, x?: number, y?: number) => {
     const plant = PLANT_DATABASE.find(p => p.id === plantId);
     if (plant && plant.zone === zone) {
-      setInventory(prev => prev.filter(p => p.id !== plantId));
+      setInventory(prev => {
+        const idx = prev.findIndex(p => p.id === plantId);
+        if (idx === -1) return prev;
+        const next = [...prev];
+        next.splice(idx, 1);
+        return next;
+      });
       setPlacedPlants(prev => [...prev, { plantId, zone, x, y }]);
       return true;
     }
