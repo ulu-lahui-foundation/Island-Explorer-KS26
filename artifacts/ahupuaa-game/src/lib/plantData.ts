@@ -198,6 +198,20 @@ export const PLANT_DATA: PlantData[] = [
     category: 'Traditional Food',
     rarity: 'Common',
   },
+  {
+    id: 'kupukupu',
+    name: 'Kupukupu',
+    scientific: 'Nephrolepis exaltata',
+    zone: 'uka',
+    image: '/plants/kupukupu.jpg',
+    description: 'A lush sword fern with long, arching fronds and dense clumps of dark green leaflets.',
+    distribution: 'Found in shaded, moist forest understories and along stream banks across all main islands.',
+    landscape: 'Excellent groundcover for shaded areas, hanging baskets, or naturalized understory plantings.',
+    care: 'Thrives in partial to full shade with consistently moist, rich organic soil. Resilient and fast-growing.',
+    cultural: 'In Hawaiian culture, the kupukupu is associated with growth and resilience. Young fronds (fiddleheads) were sometimes used in hula lei.',
+    category: 'Indigenous',
+    rarity: 'Common',
+  },
 ];
 
 export const PLANT_ALIASES: Record<string, string[]> = {
@@ -214,4 +228,5 @@ export const PLANT_ALIASES: Record<string, string[]> = {
   ulu:       ['ulu', 'breadfruit', 'artocarpus', 'altilis'],
   lai:       ['lai', 'l\u0101\u02bbi', 'cordyline', 'fruticosa', 'ti', 'ti plant'],
   limu:      ['limu', 'seaweed', 'algae', 'seaweeds'],
+  kupukupu:  ['kupukupu', 'nephrolepis', 'exaltata', 'sword fern'],
 };

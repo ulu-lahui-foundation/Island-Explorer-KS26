@@ -812,6 +812,78 @@ export function MapPage() {
       return bushGroup;
     }
 
+    // ── Kupukupu procedural fern ──
+    function createKupukupuFern() {
+      const fernGroup = new THREE.Group();
+      const stemMaterial = new THREE.MeshStandardMaterial({ color: 0x5e482b, roughness: 0.8 });
+      const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x4a7c29, roughness: 0.6 });
+      const leafGeo = new THREE.SphereGeometry(1, 6, 6);
+      leafGeo.scale(0.35, 0.04, 0.09);
+      leafGeo.translate(0.35, 0, 0);
+
+      function buildFrond(lengthScale: number) {
+        const frondGroup = new THREE.Group();
+        const numSegments = 25 + Math.floor(Math.random() * 20);
+        const spread = (1.5 + Math.random() * 1.5) * lengthScale;
+        const height = (1.2 + Math.random() * 1.5) * lengthScale;
+        const curvePoints: THREE.Vector3[] = [];
+        const leafPlacements: { pos: THREE.Vector3; pitch: number; size: number }[] = [];
+
+        for (let i = 0; i <= numSegments; i++) {
+          const t = i / numSegments;
+          const z = t * spread;
+          const y = Math.sin(t * Math.PI * 0.85) * height;
+          const pos = new THREE.Vector3(0, y, z);
+          curvePoints.push(pos);
+          if (i > 2 && i < numSegments) {
+            const size = Math.sin(t * Math.PI) * (0.6 + Math.random() * 0.4) * lengthScale;
+            const prevY = Math.sin(((i - 1) / numSegments) * Math.PI * 0.85) * height;
+            const prevZ = ((i - 1) / numSegments) * spread;
+            const pitch = Math.atan2(y - prevY, z - prevZ);
+            leafPlacements.push({ pos, pitch, size });
+          }
+        }
+
+        const curve = new THREE.CatmullRomCurve3(curvePoints);
+        const stemGeo = new THREE.TubeGeometry(curve, numSegments, 0.015 * lengthScale, 5, false);
+        const stemMesh = new THREE.Mesh(stemGeo, stemMaterial);
+        stemMesh.castShadow = true;
+        frondGroup.add(stemMesh);
+
+        leafPlacements.forEach(placement => {
+          const pairGroup = new THREE.Group();
+          pairGroup.position.copy(placement.pos);
+          pairGroup.rotation.x = -placement.pitch;
+          const rightLeaf = new THREE.Mesh(leafGeo, leafMaterial);
+          rightLeaf.scale.set(placement.size, placement.size, placement.size);
+          rightLeaf.rotation.y = 0.15;
+          rightLeaf.rotation.z = 0.15;
+          rightLeaf.castShadow = true;
+          pairGroup.add(rightLeaf);
+          const leftLeaf = new THREE.Mesh(leafGeo, leafMaterial);
+          leftLeaf.scale.set(placement.size, placement.size, placement.size);
+          leftLeaf.rotation.y = Math.PI - 0.15;
+          leftLeaf.rotation.z = -0.15;
+          leftLeaf.castShadow = true;
+          pairGroup.add(leftLeaf);
+          frondGroup.add(pairGroup);
+        });
+        return frondGroup;
+      }
+
+      const numFronds = 70 + Math.floor(Math.random() * 30);
+      for (let i = 0; i < numFronds; i++) {
+        const lengthScale = 0.5 + Math.random() * 0.8;
+        const frond = buildFrond(lengthScale);
+        const baseAngle = (i / numFronds) * Math.PI * 2 + Math.random() * 0.2;
+        frond.rotation.y = baseAngle;
+        frond.position.x = (Math.random() - 0.5) * 3.5;
+        frond.position.z = (Math.random() - 0.5) * 3.5;
+        fernGroup.add(frond);
+      }
+      return fernGroup;
+    }
+
     const spawnPlant3D = (plantId: string, position: THREE.Vector3) => {
       const group = new THREE.Group();
       group.position.copy(position);
@@ -858,8 +930,13 @@ export function MapPage() {
         bush.position.y = 0.25;
         bush.scale.set(1.2, 0.6, 1.2);
         group.add(bush);
+      } else if (plantId === "kupukupu") {
+        // Kupukupu sword fern with arching fronds
+        const fern = createKupukupuFern();
+        group.add(fern);
+        group.scale.set(4, 4, 4);
       } else if (plantId === "palapalai" || plantId === "hapuu") {
-        // Fern
+        // Fern (placeholder for Palapalai / Hapuu)
         for (let i = 0; i < 5; i++) {
           const frond = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.8), plantMat);
           frond.position.set((Math.random() - 0.5) * 0.3, 0.3 + Math.random() * 0.2, (Math.random() - 0.5) * 0.3);
