@@ -40,6 +40,9 @@ export function MapPage() {
 
   const [webglAvailable, setWebglAvailable] = useState<boolean | null>(null);
 
+  // Drag ghost state
+  const [dragGhost, setDragGhost] = useState<{ plant: Plant; x: number; y: number } | null>(null);
+
   useEffect(() => {
     setWebglAvailable(hasWebGL());
   }, []);
@@ -1031,8 +1034,13 @@ export function MapPage() {
                     key={plant.id}
                     drag
                     dragSnapToOrigin
-                    onDragEnd={(e, info) => webglAvailable ? handleDragEnd(e, info, plant.id) : handleDragEnd2D(e, info, plant.id)}
-                    whileDrag={{ scale: 1.12, zIndex: 50 }}
+                    onDragStart={() => setDragGhost({ plant, x: 0, y: 0 })}
+                    onDrag={(_e, info) => setDragGhost({ plant, x: info.point.x, y: info.point.y })}
+                    onDragEnd={(e, info) => {
+                      setDragGhost(null);
+                      webglAvailable ? handleDragEnd(e, info, plant.id) : handleDragEnd2D(e, info, plant.id);
+                    }}
+                    whileDrag={{ opacity: 0.3 }}
                     className="relative shrink-0 w-14 h-14 rounded-2xl overflow-hidden shadow-lg cursor-grab active:cursor-grabbing"
                     style={{ border: "2px solid rgba(47,111,78,0.25)" }}
                   >
@@ -1132,6 +1140,20 @@ export function MapPage() {
           </div>
         </div>
         {inventoryTray}
+        {/* Drag ghost */}
+        {dragGhost && dragGhost.x !== 0 && (
+          <div
+            className="fixed pointer-events-none z-[999] rounded-2xl overflow-hidden shadow-2xl"
+            style={{
+              width: 72, height: 72,
+              left: dragGhost.x - 36,
+              top: dragGhost.y - 36,
+              border: "3px solid rgba(92,200,130,0.85)",
+            }}
+          >
+            <img src={dragGhost.plant.image} alt={dragGhost.plant.name} className="w-full h-full object-cover" />
+          </div>
+        )}
       </div>
     );
   }
@@ -1197,6 +1219,20 @@ export function MapPage() {
       </div>
 
       {inventoryTray}
+      {/* Drag ghost */}
+      {dragGhost && dragGhost.x !== 0 && (
+        <div
+          className="fixed pointer-events-none z-[999] rounded-2xl overflow-hidden shadow-2xl"
+          style={{
+            width: 72, height: 72,
+            left: dragGhost.x - 36,
+            top: dragGhost.y - 36,
+            border: "3px solid rgba(92,200,130,0.85)",
+          }}
+        >
+          <img src={dragGhost.plant.image} alt={dragGhost.plant.name} className="w-full h-full object-cover" />
+        </div>
+      )}
     </div>
   );
 }
