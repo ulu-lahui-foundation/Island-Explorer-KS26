@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { useGame, PLANT_DATABASE, Plant } from "@/lib/GameContext";
 import { PLANT_ALIASES } from "@/lib/plantData";
 import { Camera as CameraIcon, Check, RefreshCw, Zap } from "lucide-react";
@@ -49,6 +49,12 @@ export function CameraPage() {
   const [foundPlant, setFoundPlant] = useState<(typeof PLANT_DATABASE)[0] | null>(null);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [debugLabel, setDebugLabel] = useState<string | null>(null);
+
+  // Auto-start camera on mount
+  useEffect(() => {
+    startCamera(facingMode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const startCamera = useCallback(async (facing: "environment" | "user") => {
     if (streamRef.current) {
@@ -168,15 +174,15 @@ export function CameraPage() {
       />
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* Camera start overlay */}
+      {/* Initialising camera overlay */}
       {!cameraReady && !cameraError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-20">
-          <button
-            onClick={() => startCamera(facingMode)}
-            className="px-8 py-4 rounded-2xl bg-[#5CC882] text-[#1A3828] font-extrabold text-lg shadow-lg"
+        <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
           >
-            Start Camera
-          </button>
+            <Zap size={32} color="#5CC882" />
+          </motion.div>
         </div>
       )}
 
