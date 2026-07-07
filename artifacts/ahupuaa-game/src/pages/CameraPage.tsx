@@ -214,37 +214,26 @@ export function CameraPage() {
         </button>
       </div>
 
-      {/* ── Tall corner brackets + scanning line ── */}
+      {/* ── Corner brackets (idle only) ── */}
       {cameraReady && scanState === "idle" && (
-        <>
-          {/* Corner brackets — 40 % smaller frame, clear of UI */}
-          <div className="absolute top-32 bottom-44 left-20 right-20 flex flex-col justify-center z-10">
-            <div className="flex justify-between">
-              <div className="w-4 h-4 border-l-[3px] border-t-[3px] rounded-tl-sm border-[#5CC882]" />
-              <div className="w-4 h-4 border-r-[3px] border-t-[3px] rounded-tr-sm border-[#5CC882]" />
-            </div>
-            <div className="flex-1" />
-            <div className="flex justify-between">
-              <div className="w-4 h-4 border-l-[3px] border-b-[3px] rounded-bl-sm border-[#5CC882]" />
-              <div className="w-4 h-4 border-r-[3px] border-b-[3px] rounded-br-sm border-[#5CC882]" />
-            </div>
+        <div className="absolute top-32 bottom-44 left-20 right-20 flex flex-col justify-center z-10">
+          <div className="flex justify-between">
+            <div className="w-4 h-4 border-l-[3px] border-t-[3px] rounded-tl-sm border-[#5CC882]" />
+            <div className="w-4 h-4 border-r-[3px] border-t-[3px] rounded-tr-sm border-[#5CC882]" />
           </div>
-
-          {/* Sweeping scan line — animate inside the shrunken frame */}
-          <motion.div
-            className="absolute left-20 right-20 h-0.5 bg-[#5CC882]/60 rounded-full z-10"
-            initial={{ top: '28%' }}
-            animate={{ top: ['28%', '72%', '28%'] }}
-            transition={{ duration: 3, ease: 'easeInOut', repeat: Infinity }}
-          />
-        </>
+          <div className="flex-1" />
+          <div className="flex justify-between">
+            <div className="w-4 h-4 border-l-[3px] border-b-[3px] rounded-bl-sm border-[#5CC882]" />
+            <div className="w-4 h-4 border-r-[3px] border-b-[3px] rounded-br-sm border-[#5CC882]" />
+          </div>
+        </div>
       )}
 
       {/* Center capture button */}
       {cameraReady && scanState === "idle" && (
         <button
           onClick={takeSnapshot}
-          className="absolute bottom-[50px] left-1/2 -translate-x-1/2 z-20 w-14 h-14 rounded-full bg-white shadow-lg active:scale-95 transition-transform"
+          className="absolute bottom-[100px] left-1/2 -translate-x-1/2 z-20 w-14 h-14 rounded-full bg-white shadow-lg active:scale-95 transition-transform"
         />
       )}
 
@@ -270,6 +259,13 @@ export function CameraPage() {
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/70 z-40 flex flex-col items-center justify-center"
           >
+            {/* Scanning laser line during classification */}
+            <motion.div
+              className="absolute left-10 right-10 h-0.5 bg-[#5CC882]/80 rounded-full z-10"
+              initial={{ top: '28%' }}
+              animate={{ top: ['28%', '72%', '28%'] }}
+              transition={{ duration: 3, ease: 'easeInOut', repeat: Infinity }}
+            />
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
