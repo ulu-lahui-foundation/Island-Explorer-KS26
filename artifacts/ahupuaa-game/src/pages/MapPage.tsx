@@ -1013,7 +1013,7 @@ export function MapPage() {
         {inventory.length > 0 && (
           <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full text-[11px] font-bold flex items-center justify-center"
             style={{ background: "#2F6F4E", color: "#F6F1E7" }}>
-            {dedupedInventory.length}
+            {inventory.length}
           </span>
         )}
       </button>
