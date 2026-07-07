@@ -58,6 +58,7 @@ export function MapPage() {
     backdrop: THREE.Mesh;
     raycaster: THREE.Raycaster;
     mouse: THREE.Vector2;
+    spawnedPlants: THREE.Group[];
     cleanup: () => void;
     spawnPlant3D: (plantId: string, position: THREE.Vector3) => void;
     removePlant3D: (index: number) => void;
@@ -899,9 +900,29 @@ export function MapPage() {
     };
     window.addEventListener("resize", onResize);
 
-    sceneRef.current = { scene, camera, renderer, controls, terrain, backdrop, raycaster, mouse, spawnPlant3D, removePlant3D, cleanup: () => {
+    // Canvas tap handler: raycast against spawned plant meshes
+    const onCanvasTap = (e: PointerEvent) => {
+      const s = sceneRef.current;
+      if (!s || s.spawnedPlants.length === 0) return;
+      const rect = s.renderer.domElement.getBoundingClientRect();
+      s.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      s.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      s.raycaster.setFromCamera(s.mouse, s.camera);
+      // Check each spawned plant group
+      for (let i = 0; i < s.spawnedPlants.length; i++) {
+        const intersects = s.raycaster.intersectObjects(s.spawnedPlants[i].children, true);
+        if (intersects.length > 0) {
+          setSelectedPlantIdx(i);
+          return;
+        }
+      }
+    };
+    renderer.domElement.addEventListener("pointerdown", onCanvasTap);
+
+    sceneRef.current = { scene, camera, renderer, controls, terrain, backdrop, raycaster, mouse, spawnedPlants, spawnPlant3D, removePlant3D, cleanup: () => {
       cancelAnimationFrame(animId);
       window.removeEventListener("resize", onResize);
+      renderer.domElement.removeEventListener("pointerdown", onCanvasTap);
       controls.dispose();
       renderer.dispose();
       if (renderer.domElement.parentElement) renderer.domElement.parentElement.removeChild(renderer.domElement);
@@ -1078,72 +1099,49 @@ export function MapPage() {
     setSelectedPlantIdx(null);
   };
 
-  const plantDetailOverlay = (
+  /* Zoom-in plant detail card (single motion.div for AnimatePresence) */
+  const plantDetailOverlay = selectedPlant && selectedPlantData ? (
     <AnimatePresence>
-      {selectedPlant && selectedPlantData && (
-        <>
-          {/* Invisible dismiss backdrop */}
-          <motion.div
-            key="dismiss-bg"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[199]"
-            onClick={() => setSelectedPlantIdx(null)}
-          />
-
-          {/* Zoom panel — originates from plant's x%/y% position */}
-          <div
-            key="zoom-anchor"
-            className="absolute z-[200] pointer-events-none"
-            style={{
-              left: `${selectedPlant.x ?? 50}%`,
-              top: `${selectedPlant.y ?? 50}%`,
-            }}
+      <motion.div
+        key="plant-zoom"
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0, opacity: 0 }}
+        transition={{ type: "spring", damping: 22, stiffness: 300 }}
+        className="absolute inset-0 z-[200] flex items-center justify-center"
+        style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(3px)" }}
+        onClick={() => setSelectedPlantIdx(null)}
+      >
+        <div
+          className="relative flex flex-col items-center"
+          style={{ width: "30vw", minWidth: 180 }}
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Dig Up button */}
+          <button
+            onClick={handleDigUp}
+            className="absolute -top-5 -right-5 z-10 px-3 py-1.5 rounded-full text-xs font-bold shadow-xl transition-transform active:scale-90"
+            style={{ background: "#b94040", color: "#fff", border: "2.5px solid rgba(255,255,255,0.5)", whiteSpace: "nowrap" }}
           >
-            <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
-              transition={{ type: "spring", damping: 22, stiffness: 300 }}
-              className="relative pointer-events-auto flex flex-col"
-              style={{
-                width: "30vw",
-                minWidth: 170,
-                translateX: "-50%",
-                translateY: "-50%",
-                transformOrigin: "center center",
-                borderRadius: 20,
-                overflow: "visible",
-              }}
-            >
-              {/* Dig Up button — top-right */}
-              <button
-                onClick={handleDigUp}
-                className="absolute -top-4 -right-4 z-10 px-3 py-1.5 rounded-full text-xs font-bold shadow-xl transition-transform active:scale-90"
-                style={{ background: "#b94040", color: "#fff", border: "2.5px solid rgba(255,255,255,0.5)", whiteSpace: "nowrap" }}
-              >
-                Dig Up
-              </button>
+            Dig Up
+          </button>
 
-              {/* Plant image */}
-              <div className="w-full aspect-square rounded-2xl overflow-hidden shadow-2xl"
-                style={{ border: "3px solid rgba(246,241,231,0.75)" }}>
-                <img src={selectedPlantData.image} alt={selectedPlantData.name} className="w-full h-full object-cover" />
-              </div>
-
-              {/* Name label */}
-              <div className="mt-2 mx-auto px-3 py-1 rounded-xl text-center shadow"
-                style={{ background: "rgba(246,241,231,0.97)" }}>
-                <div className="text-xs font-bold" style={{ color: "#26342F" }}>{selectedPlantData.name}</div>
-                <div className="text-[10px] capitalize" style={{ color: "#2F6F4E" }}>{selectedPlantData.zone}</div>
-              </div>
-            </motion.div>
+          {/* Plant image */}
+          <div className="w-full aspect-square rounded-2xl overflow-hidden shadow-2xl"
+            style={{ border: "3px solid rgba(246,241,231,0.8)" }}>
+            <img src={selectedPlantData.image} alt={selectedPlantData.name} className="w-full h-full object-cover" />
           </div>
-        </>
-      )}
+
+          {/* Name label */}
+          <div className="mt-2 px-4 py-1.5 rounded-xl text-center shadow"
+            style={{ background: "rgba(246,241,231,0.97)" }}>
+            <div className="text-sm font-bold" style={{ color: "#26342F" }}>{selectedPlantData.name}</div>
+            <div className="text-[10px] mt-0.5 capitalize" style={{ color: "#2F6F4E" }}>{selectedPlantData.zone}</div>
+          </div>
+        </div>
+      </motion.div>
     </AnimatePresence>
-  );
+  ) : null;
 
   /* ── 2D fallback (no WebGL) ── */
   if (webglAvailable === false) {
@@ -1271,26 +1269,6 @@ export function MapPage() {
         </div>
 
         {/* Placed plants are rendered inside the 3D canvas */}
-
-        {/* Invisible tap-targets at each plant's screen-space position */}
-        <div className="absolute inset-0 z-20" style={{ pointerEvents: "none" }}>
-          {placedPlants.map((p, i) => (
-            <button
-              key={i}
-              onClick={() => setSelectedPlantIdx(i)}
-              className="absolute w-14 h-14 rounded-full"
-              style={{
-                left: `${p.x ?? 10}%`,
-                top: `${p.y ?? 50}%`,
-                transform: 'translate(-50%, -50%)',
-                background: "transparent",
-                border: "none",
-                pointerEvents: "auto",
-                cursor: "pointer",
-              }}
-            />
-          ))}
-        </div>
       </div>
 
       {plantDetailOverlay}
