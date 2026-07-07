@@ -214,13 +214,13 @@ export function CameraPage() {
           {/* Corner brackets — 40 % smaller frame, clear of UI */}
           <div className="absolute top-32 bottom-44 left-20 right-20 flex flex-col justify-center z-10">
             <div className="flex justify-between">
-              <div className="w-4 h-4 border-l border-t rounded-tl-sm border-[#5CC882]" />
-              <div className="w-4 h-4 border-r border-t rounded-tr-sm border-[#5CC882]" />
+              <div className="w-4 h-4 border-l-[3px] border-t-[3px] rounded-tl-sm border-[#5CC882]" />
+              <div className="w-4 h-4 border-r-[3px] border-t-[3px] rounded-tr-sm border-[#5CC882]" />
             </div>
             <div className="flex-1" />
             <div className="flex justify-between">
-              <div className="w-4 h-4 border-l border-b rounded-bl-sm border-[#5CC882]" />
-              <div className="w-4 h-4 border-r border-b rounded-br-sm border-[#5CC882]" />
+              <div className="w-4 h-4 border-l-[3px] border-b-[3px] rounded-bl-sm border-[#5CC882]" />
+              <div className="w-4 h-4 border-r-[3px] border-b-[3px] rounded-br-sm border-[#5CC882]" />
             </div>
           </div>
 
@@ -238,7 +238,7 @@ export function CameraPage() {
       {cameraReady && scanState === "idle" && (
         <button
           onClick={takeSnapshot}
-          className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 w-14 h-14 rounded-full bg-white shadow-lg active:scale-95 transition-transform"
+          className="absolute bottom-[45px] left-1/2 -translate-x-1/2 z-20 w-14 h-14 rounded-full bg-white shadow-lg active:scale-95 transition-transform"
         />
       )}
 
