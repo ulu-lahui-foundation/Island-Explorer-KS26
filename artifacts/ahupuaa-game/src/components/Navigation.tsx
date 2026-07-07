@@ -22,7 +22,7 @@ export function Navigation() {
           <div className={`p-2 rounded-full mb-1 transition-colors ${isViewActive(['ahupuaa']) ? 'bg-[#2F6F4E]/12' : ''}`}>
             <Map size={26} strokeWidth={isViewActive(['ahupuaa']) ? 2.5 : 2} />
           </div>
-          <span className="text-[11px] font-bold tracking-wide uppercase">Map</span>
+          <span className="text-[11px] font-bold tracking-wide uppercase">Ahupua'a</span>
         </button>
 
         <button
