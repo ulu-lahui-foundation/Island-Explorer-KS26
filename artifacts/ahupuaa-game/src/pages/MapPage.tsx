@@ -923,7 +923,7 @@ export function MapPage() {
   }, [webglAvailable]);
 
   /* ── Handle drop from React inventory onto 3D scene ── */
-  const handleDrop = useCallback((clientX: number, clientY: number, plantId: string) => {
+  const handleDrop = useCallback((clientX: number, clientY: number, plantId: string, xPct?: number, yPct?: number) => {
     const s = sceneRef.current;
     if (!s) return false;
 
@@ -952,7 +952,9 @@ export function MapPage() {
           return false;
         }
 
-        const success = placePlant(plantId, zone);
+        const _xPct = xPct ?? (clientX / window.innerWidth) * 100;
+        const _yPct = yPct ?? (clientY / window.innerHeight) * 100;
+        const success = placePlant(plantId, zone, _xPct, _yPct);
         if (success) {
           s.spawnPlant3D(plantId, point);
         }
@@ -964,9 +966,10 @@ export function MapPage() {
 
   /* ── Drag end handler for inventory items ── */
   const handleDragEnd = (e: any, info: any, plantId: string) => {
-    // Convert the drag release point to client coordinates
     const point = info.point;
-    handleDrop(point.x, point.y, plantId);
+    const xPct = (point.x / window.innerWidth) * 100;
+    const yPct = (point.y / window.innerHeight) * 100;
+    handleDrop(point.x, point.y, plantId, xPct, yPct);
   };
 
   const dedupedInventory = deduplicateInventory(inventory);
@@ -975,14 +978,18 @@ export function MapPage() {
   /* ── 2D drag handler (used when WebGL unavailable) ── */
   const handleDragEnd2D = (e: any, info: any, plantId: string) => {
     const y = info.point.y;
-    let targetZone: Zone | null = null;
+    const x = info.point.x;
+    const vw = window.innerWidth;
     const vh = window.innerHeight;
+    let targetZone: Zone | null = null;
     if (y < vh * 0.4) targetZone = "uka";
     else if (y < vh * 0.7) targetZone = "kula";
     else if (y < vh * 0.9) targetZone = "kai";
     if (targetZone) {
       const plant = PLANT_DATABASE.find(p => p.id === plantId);
-      const success = placePlant(plantId, targetZone);
+      const xPct = (x / vw) * 100;
+      const yPct = (y / vh) * 100;
+      const success = placePlant(plantId, targetZone, xPct, yPct);
       if (!success) {
         toast({
           title: "You can't plant it there!",
@@ -1077,18 +1084,6 @@ export function MapPage() {
               style={{ background: "linear-gradient(180deg, #a8d8f0 0%, #6fb8e8 100%)", transform: "rotate(-8deg)" }} />
             <div className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold z-10"
               style={{ background: "rgba(246,241,231,0.18)", backdropFilter: "blur(8px)", color: "#F6F1E7" }}>Uka</div>
-            <div className="absolute inset-0 p-8 flex flex-wrap gap-3 items-center justify-center pointer-events-none">
-              {getPlacedForZone("uka").map((p, i) => {
-                const plant = PLANT_DATABASE.find(db => db.id === p.plantId);
-                return plant ? (
-                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} key={i}
-                    className="w-14 h-14 rounded-full overflow-hidden shadow-lg"
-                    style={{ border: "3px solid rgba(246,241,231,0.5)" }}>
-                    <img src={plant.image} alt={plant.name} className="w-full h-full object-cover" />
-                  </motion.div>
-                ) : null;
-              })}
-            </div>
           </div>
 
           {/* KULA */}
@@ -1103,18 +1098,6 @@ export function MapPage() {
               style={{ background: "#26342F", clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)" }} />
             <div className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold z-10"
               style={{ background: "rgba(246,241,231,0.20)", backdropFilter: "blur(8px)", color: "#F6F1E7" }}>Kula</div>
-            <div className="absolute inset-0 p-8 flex flex-wrap gap-3 items-center justify-center pointer-events-none">
-              {getPlacedForZone("kula").map((p, i) => {
-                const plant = PLANT_DATABASE.find(db => db.id === p.plantId);
-                return plant ? (
-                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} key={i}
-                    className="w-14 h-14 rounded-full overflow-hidden shadow-lg"
-                    style={{ border: "3px solid rgba(246,241,231,0.5)" }}>
-                    <img src={plant.image} alt={plant.name} className="w-full h-full object-cover" />
-                  </motion.div>
-                ) : null;
-              })}
-            </div>
           </div>
 
           {/* KAI */}
@@ -1125,20 +1108,32 @@ export function MapPage() {
               style={{ background: "#a8d8f0", transform: "rotate(5deg)" }} />
             <div className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold z-10"
               style={{ background: "rgba(246,241,231,0.20)", backdropFilter: "blur(8px)", color: "#F6F1E7" }}>Kai</div>
-            <div className="absolute inset-0 pt-10 pb-4 px-8 flex flex-wrap gap-3 items-center justify-center pointer-events-none">
-              {getPlacedForZone("kai").map((p, i) => {
-                const plant = PLANT_DATABASE.find(db => db.id === p.plantId);
-                return plant ? (
-                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} key={i}
-                    className="w-14 h-14 rounded-full overflow-hidden shadow-lg"
-                    style={{ border: "3px solid rgba(246,241,231,0.5)" }}>
-                    <img src={plant.image} alt={plant.name} className="w-full h-full object-cover" />
-                  </motion.div>
-                ) : null;
-              })}
-            </div>
           </div>
         </div>
+
+        {/* Placed plant badges — exact drop positions */}
+        <div className="absolute inset-0 z-10 pointer-events-none">
+          {placedPlants.map((p, i) => {
+            const plant = PLANT_DATABASE.find(db => db.id === p.plantId);
+            return plant ? (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                key={i}
+                className="absolute w-14 h-14 rounded-full overflow-hidden shadow-lg"
+                style={{
+                  left: `${p.x ?? 10}%`,
+                  top: `${p.y ?? 50}%`,
+                  transform: 'translate(-50%, -50%)',
+                  border: "3px solid rgba(246,241,231,0.5)",
+                }}
+              >
+                <img src={plant.image} alt={plant.name} className="w-full h-full object-cover" />
+              </motion.div>
+            ) : null;
+          })}
+        </div>
+
         {inventoryTray}
         {/* Drag ghost */}
         {dragGhost && dragGhost.x !== 0 && (
@@ -1179,38 +1174,23 @@ export function MapPage() {
           Kai
         </div>
 
-        {/* Placed plant badges */}
-        <div className="absolute top-8 left-4 flex flex-wrap gap-2">
-          {getPlacedForZone("uka").map((p, i) => {
+        {/* Placed plant badges — exact drop positions */}
+        <div className="absolute inset-0 z-10 pointer-events-none">
+          {placedPlants.map((p, i) => {
             const plant = PLANT_DATABASE.find((db) => db.id === p.plantId);
             return plant ? (
-              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} key={i}
-                className="w-10 h-10 rounded-full overflow-hidden shadow-lg"
-                style={{ border: "3px solid rgba(246,241,231,0.5)" }}>
-                <img src={plant.image} alt={plant.name} className="w-full h-full object-cover" />
-              </motion.div>
-            ) : null;
-          })}
-        </div>
-        <div className="absolute top-[40%] left-4 flex flex-wrap gap-2">
-          {getPlacedForZone("kula").map((p, i) => {
-            const plant = PLANT_DATABASE.find((db) => db.id === p.plantId);
-            return plant ? (
-              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} key={i}
-                className="w-10 h-10 rounded-full overflow-hidden shadow-lg"
-                style={{ border: "3px solid rgba(246,241,231,0.5)" }}>
-                <img src={plant.image} alt={plant.name} className="w-full h-full object-cover" />
-              </motion.div>
-            ) : null;
-          })}
-        </div>
-        <div className="absolute bottom-[30%] left-4 flex flex-wrap gap-2">
-          {getPlacedForZone("kai").map((p, i) => {
-            const plant = PLANT_DATABASE.find((db) => db.id === p.plantId);
-            return plant ? (
-              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} key={i}
-                className="w-10 h-10 rounded-full overflow-hidden shadow-lg"
-                style={{ border: "3px solid rgba(246,241,231,0.5)" }}>
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                key={i}
+                className="absolute w-10 h-10 rounded-full overflow-hidden shadow-lg"
+                style={{
+                  left: `${p.x ?? 10}%`,
+                  top: `${p.y ?? 50}%`,
+                  transform: 'translate(-50%, -50%)',
+                  border: "3px solid rgba(246,241,231,0.5)",
+                }}
+              >
                 <img src={plant.image} alt={plant.name} className="w-full h-full object-cover" />
               </motion.div>
             ) : null;

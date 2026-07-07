@@ -31,6 +31,8 @@ export type ViewState = 'ahupuaa' | 'camera' | 'piko' | 'plant_index' | 'tasks' 
 export type PlacedPlant = {
   plantId: string;
   zone: Zone;
+  x?: number; // screen % left (0-100)
+  y?: number; // screen % top (0-100)
 };
 
 interface GameContextType {
@@ -40,7 +42,7 @@ interface GameContextType {
   inventory: Plant[];
   placedPlants: PlacedPlant[];
   collectPlant: (plant: Plant) => void;
-  placePlant: (plantId: string, zone: Zone) => boolean;
+  placePlant: (plantId: string, zone: Zone, x?: number, y?: number) => boolean;
   darkMode: boolean;
   toggleDarkMode: () => void;
   weeklyState: WeeklyState;
@@ -90,11 +92,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setInventory(prev => [...prev, plant]);
   };
 
-  const placePlant = (plantId: string, zone: Zone) => {
+  const placePlant = (plantId: string, zone: Zone, x?: number, y?: number) => {
     const plant = PLANT_DATABASE.find(p => p.id === plantId);
     if (plant && plant.zone === zone) {
       setInventory(prev => prev.filter(p => p.id !== plantId));
-      setPlacedPlants(prev => [...prev, { plantId, zone }]);
+      setPlacedPlants(prev => [...prev, { plantId, zone, x, y }]);
       return true;
     }
     return false;
