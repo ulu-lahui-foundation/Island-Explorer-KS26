@@ -1047,7 +1047,7 @@ export function MapPage() {
                 dedupedInventory.map(({ plant, count }) => (
                   <motion.div
                     key={plant.id}
-                    drag
+                    drag="y"
                     dragSnapToOrigin
                     onDragStart={() => setDragGhost({ plant, x: 0, y: 0 })}
                     onDrag={(_e, info) => setDragGhost({ plant, x: info.point.x, y: info.point.y })}
