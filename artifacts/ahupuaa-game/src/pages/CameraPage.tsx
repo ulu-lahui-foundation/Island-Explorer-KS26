@@ -244,7 +244,7 @@ export function CameraPage() {
       {cameraReady && scanState === "idle" && (
         <button
           onClick={takeSnapshot}
-          className="absolute bottom-[60px] left-1/2 -translate-x-1/2 z-20 w-14 h-14 rounded-full bg-white shadow-lg active:scale-95 transition-transform"
+          className="absolute bottom-[40px] left-1/2 -translate-x-1/2 z-20 w-14 h-14 rounded-full bg-white shadow-lg active:scale-95 transition-transform"
         />
       )}
 
