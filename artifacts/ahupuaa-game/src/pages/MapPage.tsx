@@ -1066,62 +1066,84 @@ export function MapPage() {
     </div>
   );
 
-  /* ── Shared plant detail overlay (tap-to-zoom) ── */
+  /* ── Shared plant detail overlay (zoom-from-plant) ── */
   const selectedPlant = selectedPlantIdx !== null ? placedPlants[selectedPlantIdx] : null;
   const selectedPlantData = selectedPlant ? PLANT_DATABASE.find(p => p.id === selectedPlant.plantId) : null;
-  const plantDetailOverlay = selectedPlant && selectedPlantData ? (
+
+  const handleDigUp = () => {
+    if (selectedPlantIdx !== null) {
+      sceneRef.current?.removePlant3D(selectedPlantIdx);
+      removePlacedPlant(selectedPlantIdx);
+    }
+    setSelectedPlantIdx(null);
+  };
+
+  const plantDetailOverlay = (
     <AnimatePresence>
-      <motion.div
-        key="plant-detail-backdrop"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="absolute inset-0 z-[200] flex items-center justify-center"
-        style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
-        onClick={() => setSelectedPlantIdx(null)}
-      >
-        <motion.div
-          initial={{ scale: 0.7, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.7, opacity: 0 }}
-          transition={{ type: "spring", damping: 22, stiffness: 280 }}
-          className="relative flex flex-col items-center"
-          onClick={e => e.stopPropagation()}
-          style={{ width: "30vw", minWidth: 150 }}
-        >
-          {/* Dig Up button */}
-          <button
-            onClick={() => {
-              if (selectedPlantIdx !== null) {
-                sceneRef.current?.removePlant3D(selectedPlantIdx);
-                removePlacedPlant(selectedPlantIdx);
-              }
-              setSelectedPlantIdx(null);
-              toast({ title: "Plant dug up", description: `${selectedPlantData.name} has been removed.` });
+      {selectedPlant && selectedPlantData && (
+        <>
+          {/* Invisible dismiss backdrop */}
+          <motion.div
+            key="dismiss-bg"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[199]"
+            onClick={() => setSelectedPlantIdx(null)}
+          />
+
+          {/* Zoom panel — originates from plant's x%/y% position */}
+          <div
+            key="zoom-anchor"
+            className="absolute z-[200] pointer-events-none"
+            style={{
+              left: `${selectedPlant.x ?? 50}%`,
+              top: `${selectedPlant.y ?? 50}%`,
             }}
-            className="absolute -top-3 -right-3 z-10 px-3 py-1 rounded-full text-xs font-bold shadow-lg transition-transform active:scale-95"
-            style={{ background: "#b94040", color: "#fff", border: "2px solid rgba(255,255,255,0.3)" }}
           >
-            Dig Up
-          </button>
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ type: "spring", damping: 22, stiffness: 300 }}
+              className="relative pointer-events-auto flex flex-col"
+              style={{
+                width: "30vw",
+                minWidth: 170,
+                translateX: "-50%",
+                translateY: "-50%",
+                transformOrigin: "center center",
+                borderRadius: 20,
+                overflow: "visible",
+              }}
+            >
+              {/* Dig Up button — top-right */}
+              <button
+                onClick={handleDigUp}
+                className="absolute -top-4 -right-4 z-10 px-3 py-1.5 rounded-full text-xs font-bold shadow-xl transition-transform active:scale-90"
+                style={{ background: "#b94040", color: "#fff", border: "2.5px solid rgba(255,255,255,0.5)", whiteSpace: "nowrap" }}
+              >
+                Dig Up
+              </button>
 
-          {/* Plant image */}
-          <div className="w-full aspect-square rounded-2xl overflow-hidden shadow-2xl"
-            style={{ border: "3px solid rgba(246,241,231,0.6)" }}>
-            <img src={selectedPlantData.image} alt={selectedPlantData.name} className="w-full h-full object-cover" />
-          </div>
+              {/* Plant image */}
+              <div className="w-full aspect-square rounded-2xl overflow-hidden shadow-2xl"
+                style={{ border: "3px solid rgba(246,241,231,0.75)" }}>
+                <img src={selectedPlantData.image} alt={selectedPlantData.name} className="w-full h-full object-cover" />
+              </div>
 
-          {/* Name + zone */}
-          <div className="mt-3 px-3 py-1.5 rounded-xl text-center"
-            style={{ background: "rgba(246,241,231,0.95)" }}>
-            <div className="text-sm font-bold" style={{ color: "#26342F" }}>{selectedPlantData.name}</div>
-            <div className="text-xs mt-0.5 capitalize" style={{ color: "#2F6F4E" }}>{selectedPlantData.zone} zone</div>
+              {/* Name label */}
+              <div className="mt-2 mx-auto px-3 py-1 rounded-xl text-center shadow"
+                style={{ background: "rgba(246,241,231,0.97)" }}>
+                <div className="text-xs font-bold" style={{ color: "#26342F" }}>{selectedPlantData.name}</div>
+                <div className="text-[10px] capitalize" style={{ color: "#2F6F4E" }}>{selectedPlantData.zone}</div>
+              </div>
+            </motion.div>
           </div>
-          <div className="mt-2 text-xs" style={{ color: "rgba(246,241,231,0.6)" }}>Tap outside to close</div>
-        </motion.div>
-      </motion.div>
+        </>
+      )}
     </AnimatePresence>
-  ) : null;
+  );
 
   /* ── 2D fallback (no WebGL) ── */
   if (webglAvailable === false) {
@@ -1250,27 +1272,24 @@ export function MapPage() {
 
         {/* Placed plants are rendered inside the 3D canvas */}
 
-        {/* Tap-target overlays at each plant's screen-space position */}
+        {/* Invisible tap-targets at each plant's screen-space position */}
         <div className="absolute inset-0 z-20" style={{ pointerEvents: "none" }}>
-          {placedPlants.map((p, i) => {
-            const plant = PLANT_DATABASE.find(db => db.id === p.plantId);
-            return plant ? (
-              <button
-                key={i}
-                onClick={() => setSelectedPlantIdx(i)}
-                className="absolute w-12 h-12 rounded-full"
-                style={{
-                  left: `${p.x ?? 10}%`,
-                  top: `${p.y ?? 50}%`,
-                  transform: 'translate(-50%, -50%)',
-                  background: "transparent",
-                  border: "2px solid rgba(246,241,231,0.4)",
-                  pointerEvents: "auto",
-                  cursor: "pointer",
-                }}
-              />
-            ) : null;
-          })}
+          {placedPlants.map((p, i) => (
+            <button
+              key={i}
+              onClick={() => setSelectedPlantIdx(i)}
+              className="absolute w-14 h-14 rounded-full"
+              style={{
+                left: `${p.x ?? 10}%`,
+                top: `${p.y ?? 50}%`,
+                transform: 'translate(-50%, -50%)',
+                background: "transparent",
+                border: "none",
+                pointerEvents: "auto",
+                cursor: "pointer",
+              }}
+            />
+          ))}
         </div>
       </div>
 
