@@ -52,8 +52,12 @@ const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export function GameProvider({ children }: { children: ReactNode }) {
   const [currentView, setCurrentView] = useState<ViewState>('ahupuaa');
-  const [collectedPlants, setCollectedPlants] = useState<string[]>([]);
-  const [inventory, setInventory] = useState<Plant[]>([]);
+  const [collectedPlants, setCollectedPlants] = useState<string[]>(
+    PLANT_DATABASE.map(p => p.id)
+  );
+  const [inventory, setInventory] = useState<Plant[]>(
+    PLANT_DATABASE.flatMap(p => [p, p])
+  );
   const [placedPlants, setPlacedPlants] = useState<PlacedPlant[]>([]);
   const [darkMode, setDarkMode] = useState(true);
   const [weeklyState, setWeeklyState] = useState<WeeklyState>(() => loadWeeklyState());
