@@ -916,6 +916,13 @@ export function MapPage() {
       if (renderer.domElement.parentElement) renderer.domElement.parentElement.removeChild(renderer.domElement);
     }};
 
+    // Restore previously placed plants into the 3D scene
+    for (const pp of placedPlants) {
+      if (pp.wx !== undefined && pp.wy !== undefined && pp.wz !== undefined) {
+        spawnPlant3D(pp.plantId, new THREE.Vector3(pp.wx, pp.wy, pp.wz));
+      }
+    }
+
     return () => {
       sceneRef.current?.cleanup();
       sceneRef.current = null;
@@ -954,7 +961,7 @@ export function MapPage() {
 
         const _xPct = xPct ?? (clientX / window.innerWidth) * 100;
         const _yPct = yPct ?? (clientY / window.innerHeight) * 100;
-        const success = placePlant(plantId, zone, _xPct, _yPct);
+        const success = placePlant(plantId, zone, _xPct, _yPct, point.x, point.y, point.z);
         if (success) {
           s.spawnPlant3D(plantId, point);
         }
@@ -1174,28 +1181,7 @@ export function MapPage() {
           Kai
         </div>
 
-        {/* Placed plant badges — exact drop positions */}
-        <div className="absolute inset-0 z-10 pointer-events-none">
-          {placedPlants.map((p, i) => {
-            const plant = PLANT_DATABASE.find((db) => db.id === p.plantId);
-            return plant ? (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                key={i}
-                className="absolute w-10 h-10 rounded-full overflow-hidden shadow-lg"
-                style={{
-                  left: `${p.x ?? 10}%`,
-                  top: `${p.y ?? 50}%`,
-                  transform: 'translate(-50%, -50%)',
-                  border: "3px solid rgba(246,241,231,0.5)",
-                }}
-              >
-                <img src={plant.image} alt={plant.name} className="w-full h-full object-cover" />
-              </motion.div>
-            ) : null;
-          })}
-        </div>
+        {/* Placed plants are rendered inside the 3D canvas */}
       </div>
 
       {inventoryTray}
