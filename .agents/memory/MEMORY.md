@@ -1,5 +1,0 @@
-- [WebGL context exhaustion](webgl-context-limits.md) — browser caps WebGL contexts per tab; never create multiple renderers.
-- [Three.js DOM stacking](threejs-dom-stacking.md) — canvas compositing layers break sibling z-index; overlay children must share the same absolute parent.
-- [Procedural bounds accuracy](procedural-bounds.md) — `Box3.setFromObject()` on Groups with nested transforms is unreliable; traverse per-vertex world coordinates.
-- [GPU memory disposal](gpu-memory-disposal.md) — always `geometry.dispose()` + `material.dispose()` when removing procedural meshes from shared scenes.
-- [WebGL render queue](webgl-render-queue.md) — synchronous renders block the main thread; chain promises for predictable frame scheduling.

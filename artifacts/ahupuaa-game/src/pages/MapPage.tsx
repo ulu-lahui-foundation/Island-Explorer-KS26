@@ -5,7 +5,7 @@ import { Leaf } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as THREE from "three";
 import { buildPlantModel } from "@/lib/plantModels";
-import { PlantSprite } from "@/components/PlantSprite";
+import { PlantPreview } from "@/components/PlantPreview";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { ImprovedNoise } from "three/examples/jsm/math/ImprovedNoise.js";
 
@@ -1016,10 +1016,10 @@ export function MapPage() {
                       webglAvailable ? handleDragEnd(e, info, plant.id) : handleDragEnd2D(e, info, plant.id);
                     }}
                     whileDrag={{ opacity: 0.3 }}
-                    className="relative shrink-0 w-28 h-28 rounded-2xl overflow-hidden shadow-lg cursor-grab active:cursor-grabbing"
+                    className="relative shrink-0 w-20 h-20 rounded-2xl overflow-hidden shadow-lg cursor-grab active:cursor-grabbing"
                     style={{ border: "2px solid rgba(47,111,78,0.25)" }}
                   >
-                    <PlantSprite plantId={plant.id} />
+                    <PlantPreview plantId={plant.id} />
                     {/* Name label at bottom */}
                     <div className="absolute bottom-0 left-0 right-0 py-0.5 text-center text-[9px] font-bold pointer-events-none"
                       style={{ background: "rgba(38,52,47,0.65)", color: "#F6F1E7", lineHeight: 1.1 }}>
@@ -1194,7 +1194,7 @@ export function MapPage() {
               border: "3px solid rgba(92,200,130,0.85)",
             }}
           >
-            <PlantSprite plantId={dragGhost.plant.id} className="w-full h-full" />
+            <img src={dragGhost.plant.image} alt={dragGhost.plant.name} className="w-full h-full object-cover" />
           </div>
         )}
       </div>
@@ -1217,7 +1217,7 @@ export function MapPage() {
           style={{ background: "rgba(246,241,231,0.18)", backdropFilter: "blur(8px)", color: "#F6F1E7" }}>
           Kula
         </div>
-        <div className="absolute bottom-[25%] right-4 px-3 py-1 rounded-full text-xs font-bold"
+        <div className="absolute bottom-[30%] right-4 px-3 py-1 rounded-full text-xs font-bold"
           style={{ background: "rgba(246,241,231,0.18)", backdropFilter: "blur(8px)", color: "#F6F1E7" }}>
           Kai
         </div>
@@ -1239,7 +1239,7 @@ export function MapPage() {
             background: "#1a2b1f",
           }}
         >
-          <PlantSprite plantId={dragGhost.plant.id} className="w-full h-full" />
+          <PlantPreview plantId={dragGhost.plant.id} className="w-full h-full" />
         </div>
       )}
     </div>
