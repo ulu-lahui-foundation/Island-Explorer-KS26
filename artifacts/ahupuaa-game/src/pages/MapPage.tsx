@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { useGame, Zone, PLANT_DATABASE, Plant } from "@/lib/GameContext";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Leaf } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as THREE from "three";
@@ -1405,10 +1405,11 @@ export function MapPage() {
         const intersects = s.raycaster.intersectObjects(s.spawnedPlants[i].children, true);
         if (intersects.length > 0) {
           const worldPos = s.spawnedPlants[i].position.clone();
+          const baseY = worldPos.y;
           cameraTargetRef.current = {
-            target: worldPos,
+            target: new THREE.Vector3(worldPos.x, baseY + 4, worldPos.z),
             distance: 10,
-            height: 12,
+            height: 2,
             active: true,
           };
           setSelectedPlantIdx(i);
