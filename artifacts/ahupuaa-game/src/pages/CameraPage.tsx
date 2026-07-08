@@ -1,7 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useGame, PLANT_DATABASE, Plant } from "@/lib/GameContext";
 import { PLANT_ALIASES } from "@/lib/plantData";
-import { Check, RefreshCw, Zap, Frown } from "lucide-react";
+import { Check, RefreshCw, Zap, Frown, ImagePlus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ---------------------------------------------------------------------------
@@ -49,6 +49,8 @@ export function CameraPage() {
   const [foundPlant, setFoundPlant] = useState<(typeof PLANT_DATABASE)[0] | null>(null);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [debugLabel, setDebugLabel] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-start camera on mount
   useEffect(() => {
@@ -114,6 +116,7 @@ export function CameraPage() {
   };
 
   const classifyImage = async (imageBlob: Blob) => {
+    setErrorMessage(null);
     try {
       const fd = new FormData();
       fd.append("image", imageBlob, "capture.jpg");
@@ -123,17 +126,29 @@ export function CameraPage() {
         body: fd,
       });
 
+      const data = await res.json().catch(() => null);
+
       if (!res.ok) {
-        throw new Error(`Server error ${res.status}`);
+        setErrorMessage(
+          data?.error ?? "Couldn't reach the identification server. Check your connection and try again.",
+        );
+        setScanState("error");
+        return;
       }
 
-      const data = await res.json();
-      const top = data?.predictions?.[0];
-      const label = top?.class ?? top?.label ?? "Unknown";
-      const confidence = top?.confidence ?? 0;
-      setDebugLabel(`${label} (${(confidence * 100).toFixed(0)}%)`);
-
       incrementScanCount();
+
+      const top = data?.top ?? data?.predictions?.[0];
+      if (!top) {
+        setErrorMessage(data?.error ?? null);
+        setFoundPlant(null);
+        setScanState("unknown");
+        return;
+      }
+
+      const label = top.class ?? top.label ?? "Unknown";
+      const confidence = top.confidence ?? 0;
+      setDebugLabel(`${label} (${(confidence * 100).toFixed(0)}%)`);
 
       if (confidence < 0.3) {
         setFoundPlant(null);
@@ -145,14 +160,29 @@ export function CameraPage() {
       setFoundPlant(plant);
       setScanState(plant ? "done" : "unknown");
     } catch {
+      setErrorMessage("Couldn't reach the identification server. Check your connection and try again.");
       setScanState("error");
     }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setErrorMessage("That file isn't an image. Please choose a photo of a plant.");
+      setScanState("error");
+      return;
+    }
+    setScanState("classifying");
+    classifyImage(file);
   };
 
   const closeResult = () => {
     setScanState("idle");
     setFoundPlant(null);
     setDebugLabel(null);
+    setErrorMessage(null);
   };
 
   const collect = () => {
@@ -229,12 +259,31 @@ export function CameraPage() {
         </div>
       )}
 
-      {/* Center capture button */}
-      {cameraReady && scanState === "idle" && (
-        <button
-          onClick={takeSnapshot}
-          className="absolute bottom-[100px] left-1/2 -translate-x-1/2 z-20 w-14 h-14 rounded-full bg-white shadow-lg active:scale-95 transition-transform"
-        />
+      {/* Center capture button + upload */}
+      {scanState === "idle" && (
+        <>
+          {cameraReady && (
+            <button
+              onClick={takeSnapshot}
+              className="absolute bottom-[100px] left-1/2 -translate-x-1/2 z-20 w-14 h-14 rounded-full bg-white shadow-lg active:scale-95 transition-transform"
+            />
+          )}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="absolute bottom-[110px] left-1/2 translate-x-14 z-20 w-11 h-11 rounded-full flex items-center justify-center active:scale-95 transition-transform"
+            style={{ background: 'rgba(20,40,28,0.55)', backdropFilter: 'blur(8px)' }}
+            aria-label="Upload a photo"
+          >
+            <ImagePlus size={18} color="#fff" />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+        </>
       )}
 
       {/* Flash overlay */}
@@ -310,6 +359,10 @@ export function CameraPage() {
             <div className="flex-1 overflow-y-auto px-5 pt-1 pb-4">
               <p className="text-[#26342F]/50 text-xs font-semibold italic mb-3">{foundPlant.scientific}</p>
 
+              {debugLabel && (
+                <p className="text-[#2F6F4E] text-xs font-bold mb-3">AI match: {debugLabel}</p>
+              )}
+
               {/* Category tags */}
               <div className="flex flex-wrap gap-1.5 mb-3">
                 <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-[#2F6F4E]/10 text-[#2F6F4E]">
@@ -367,9 +420,10 @@ export function CameraPage() {
                 {scanState === "error" ? "Something went wrong" : "Plant not identified"}
               </h2>
               <p className="text-[#26342F]/60 text-sm leading-relaxed max-w-xs mb-6">
-                {scanState === "error"
-                  ? "Couldn\u2019t reach the identification server. Check your connection and try again."
-                  : "Try again with better lighting, a closer angle, or make sure the leaf fills the frame."}
+                {errorMessage ??
+                  (scanState === "error"
+                    ? "Couldn\u2019t reach the identification server. Check your connection and try again."
+                    : "Try again with better lighting, a closer angle, or make sure the leaf fills the frame.")}
               </p>
               {debugLabel && (
                 <p className="text-[#26342F]/35 text-xs mb-5">{debugLabel}</p>

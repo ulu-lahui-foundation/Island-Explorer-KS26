@@ -1,13 +1,22 @@
 import { Router } from "express";
 import express from "express";
+import multer from "multer";
 
 const router = Router();
 
 const ROBOFLOW_URL =
-  "https://serverless.roboflow.com/aina-intelligence-lab/workflows/plant-identification-app-20-v6-logic";
+  "https://serverless.roboflow.com/infer/workflows/aina-intelligence-lab/plant-identification-app-20-logic";
 
 const RETRY_ATTEMPTS = 2;
 const TIMEOUT_MS = 20_000;
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    cb(null, file.mimetype.startsWith("image/"));
+  },
+});
 
 /** Strip any base64 image blobs before logging so predictions stay readable */
 function stripImageBlobs(obj: unknown): unknown {
@@ -57,7 +66,7 @@ async function callRoboflow(
     const text = await rfRes.text();
 
     if (!rfRes.ok) {
-      const err = new Error(`Roboflow HTTP ${rfRes.status}: ${text}`);
+      const err = new Error(`Roboflow HTTP ${rfRes.status}: ${text.slice(0, 500)}`);
       (err as NodeJS.ErrnoException).code = String(rfRes.status);
       throw err;
     }
@@ -72,11 +81,11 @@ async function callRoboflow(
 
     const isRetryable =
       attempt < RETRY_ATTEMPTS &&
-      (err instanceof Error &&
-        (err.name === "AbortError" ||
-          (err as NodeJS.ErrnoException).code === "ECONNRESET" ||
-          (err as NodeJS.ErrnoException).code === "503" ||
-          (err as NodeJS.ErrnoException).code === "429"));
+      err instanceof Error &&
+      (err.name === "AbortError" ||
+        (err as NodeJS.ErrnoException).code === "ECONNRESET" ||
+        (err as NodeJS.ErrnoException).code === "503" ||
+        (err as NodeJS.ErrnoException).code === "429");
 
     if (isRetryable) {
       const delay = 500 * Math.pow(2, attempt);
@@ -90,29 +99,82 @@ async function callRoboflow(
   }
 }
 
+type Prediction = { class?: string; label?: string; confidence?: number };
+
+/** Extract predictions from result.outputs[0].predictions (handles both array and nested object shapes) */
+function extractPredictions(data: unknown): Prediction[] {
+  const outputs = (data as { outputs?: unknown[] })?.outputs;
+  if (!Array.isArray(outputs) || outputs.length === 0) return [];
+  const first = outputs[0] as Record<string, unknown>;
+  let preds: unknown = first["predictions"];
+  // Some workflow outputs nest again: outputs[0].predictions.predictions
+  if (preds && !Array.isArray(preds) && typeof preds === "object") {
+    const inner = (preds as Record<string, unknown>)["predictions"];
+    if (Array.isArray(inner)) preds = inner;
+  }
+  if (!Array.isArray(preds)) return [];
+  return preds as Prediction[];
+}
+
 router.post(
   "/classify-plant",
+  upload.single("image"),
   express.json({ limit: "50mb" }),
   async (req, res) => {
     const apiKey = process.env["ROBOFLOW_API_KEY"];
     if (!apiKey) {
-      res.status(500).json({ error: "ROBOFLOW_API_KEY not configured" });
+      req.log.error("ROBOFLOW_API_KEY is not configured");
+      res.status(500).json({
+        error: "The plant identifier isn't set up yet. Missing ROBOFLOW_API_KEY.",
+      });
       return;
     }
 
-    const { imageBase64 } = req.body as { imageBase64?: string };
+    // Accept either a multipart file upload (field "image") or a JSON body with imageBase64
+    let imageBase64: string | undefined;
+    if (req.file?.buffer) {
+      imageBase64 = req.file.buffer.toString("base64");
+    } else {
+      const body = req.body as { imageBase64?: string } | undefined;
+      imageBase64 = body?.imageBase64;
+    }
+
     if (!imageBase64) {
-      res.status(400).json({ error: "imageBase64 is required" });
+      res.status(400).json({
+        error: "No image was uploaded. Please take or choose a photo first.",
+      });
       return;
     }
 
     try {
       const data = await callRoboflow(apiKey, imageBase64);
-      req.log.info({ outputs: stripImageBlobs(data) }, "Roboflow prediction");
-      res.json(data);
+      req.log.info({ roboflow: stripImageBlobs(data) }, "Roboflow full response");
+
+      const predictions = extractPredictions(data);
+      if (predictions.length === 0) {
+        res.status(200).json({
+          predictions: [],
+          error: "No plant could be identified in this photo. Try getting closer or improving the lighting.",
+        });
+        return;
+      }
+
+      const sorted = [...predictions].sort(
+        (a, b) => (b.confidence ?? 0) - (a.confidence ?? 0)
+      );
+      const top = sorted[0];
+      res.json({
+        predictions: sorted,
+        top: {
+          class: top?.class ?? top?.label ?? "Unknown",
+          confidence: top?.confidence ?? 0,
+        },
+      });
     } catch (err) {
       req.log.error({ err }, "Roboflow call failed");
-      res.status(502).json({ error: "Failed to reach Roboflow", detail: String(err) });
+      res.status(502).json({
+        error: "Couldn't reach the plant identifier right now. Please try again in a moment.",
+      });
     }
   }
 );
