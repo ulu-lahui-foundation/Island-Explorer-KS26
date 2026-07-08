@@ -163,6 +163,158 @@ export function createNaupakaBush() {
   return bushGroup;
 }
 
+// ── Hāpuʻu (Hawaiian Tree Fern) procedural model ──
+export function createHapuu() {
+  const hapuuGroup = new THREE.Group();
+  const dummy = new THREE.Object3D();
+  const colorHelper = new THREE.Color();
+
+  const trunkHeight = 3.5;
+  const trunkRadiusBase = 0.4;
+  const trunkRadiusTop = 0.3;
+  const numFronds = 10;
+  const numEmerging = 3;
+  const numFiddleheads = 3;
+  const totalLeaves = 3000;
+  const totalFuzz = 2000;
+
+  const barkMat = new THREE.MeshStandardMaterial({ color: 0x5c3a21, roughness: 0.9, metalness: 0.05 });
+  const fiberMat = new THREE.MeshStandardMaterial({ color: 0x9e6c27, roughness: 1.0, metalness: 0.0 });
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x3d6e27, roughness: 0.7, metalness: 0.0, side: THREE.DoubleSide });
+
+  // Trunk
+  const trunkGeo = new THREE.CylinderGeometry(trunkRadiusTop, trunkRadiusBase, trunkHeight, 10, 1);
+  trunkGeo.translate(0, trunkHeight / 2, 0);
+  hapuuGroup.add(new THREE.Mesh(trunkGeo, barkMat));
+
+  // Pulu fuzz (instanced)
+  const fuzzGeo = new THREE.CylinderGeometry(0.004, 0.001, 0.15, 3);
+  fuzzGeo.translate(0, 0.075, 0);
+  const fuzzInst = new THREE.InstancedMesh(fuzzGeo, fiberMat, totalFuzz);
+  hapuuGroup.add(fuzzInst);
+  let fuzzIdx = 0;
+
+  const trunkFuzzCount = Math.floor(totalFuzz * 0.7);
+  for (let i = 0; i < trunkFuzzCount && fuzzIdx < totalFuzz; i++) {
+    const h = Math.random() * trunkHeight;
+    const theta = Math.random() * Math.PI * 2;
+    const r = trunkRadiusBase - (trunkRadiusBase - trunkRadiusTop) * (h / trunkHeight);
+    dummy.position.set(Math.cos(theta) * r, h, Math.sin(theta) * r);
+    const normal = new THREE.Vector3(Math.cos(theta), 0, Math.sin(theta));
+    const droop = normal.clone().add(new THREE.Vector3(0, -0.6 + Math.random() * 0.2, 0)).normalize();
+    dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), droop);
+    dummy.updateMatrix();
+    fuzzInst.setMatrixAt(fuzzIdx++, dummy.matrix);
+  }
+
+  // Leaf instances
+  const leafGeo = new THREE.ConeGeometry(0.05, 0.6, 4);
+  leafGeo.translate(0, 0.3, 0);
+  const leafInst = new THREE.InstancedMesh(leafGeo, leafMat, totalLeaves);
+  hapuuGroup.add(leafInst);
+  let leafIdx = 0;
+
+  function createFrondCurve(angle: number, isEmerging: boolean): THREE.CatmullRomCurve3 {
+    const start = new THREE.Vector3(0, trunkHeight - 0.1, 0);
+    const length = isEmerging ? 2.0 + Math.random() * 0.5 : 3.5 + Math.random() * 1.0;
+    const out = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+    const p1 = start.clone().add(out.clone().multiplyScalar(length * 0.3)).add(new THREE.Vector3(0, length * 0.5, 0));
+    const p2h = isEmerging ? length * 0.7 : length * 0.3;
+    const p2 = start.clone().add(out.clone().multiplyScalar(length * 0.7)).add(new THREE.Vector3(0, p2h, 0));
+    const p3h = isEmerging ? length * 0.6 : -length * 0.2;
+    const p3 = start.clone().add(out.clone().multiplyScalar(length)).add(new THREE.Vector3(0, p3h, 0));
+    return new THREE.CatmullRomCurve3([start, p1, p2, p3]);
+  }
+
+  const totalStems = numFronds + numEmerging;
+  for (let f = 0; f < totalStems; f++) {
+    const isEmerging = f >= numFronds;
+    const angle = (f / totalStems) * Math.PI * 2 + Math.random() * 0.2;
+    const curve = createFrondCurve(angle, isEmerging);
+
+    const stemGeo = new THREE.TubeGeometry(curve, 20, isEmerging ? 0.025 : 0.03, 4, false);
+    hapuuGroup.add(new THREE.Mesh(stemGeo, barkMat));
+
+    const numPairs = isEmerging ? 30 : 50;
+    for (let p = 4; p < numPairs; p++) {
+      if (leafIdx >= totalLeaves - 2) break;
+      const t = p / numPairs;
+      const position = curve.getPointAt(t);
+      const tangent = curve.getTangentAt(t).normalize();
+      const binormal = new THREE.Vector3().crossVectors(tangent, new THREE.Vector3(0, 1, 0)).normalize();
+      const widthProfile = Math.pow(Math.sin(t * Math.PI), 0.7);
+      const scaleFactor = widthProfile * (isEmerging ? 0.7 : 1.2);
+
+      // fuzz near base of stems
+      if (t < 0.2 && fuzzIdx < totalFuzz - 2) {
+        dummy.position.copy(position).add(new THREE.Vector3((Math.random() - 0.5) * 0.05, (Math.random() - 0.5) * 0.05, (Math.random() - 0.5) * 0.05));
+        dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize());
+        dummy.scale.setScalar(1);
+        dummy.updateMatrix();
+        fuzzInst.setMatrixAt(fuzzIdx++, dummy.matrix);
+      }
+
+      for (const dir of [1, -1]) {
+        if (leafIdx >= totalLeaves) break;
+        dummy.position.copy(position);
+        const leafDir = binormal.clone().multiplyScalar(dir).add(tangent.clone().multiplyScalar(0.4)).normalize();
+        const droop = new THREE.Vector3(0, -0.2 - (1 - widthProfile) * 0.3, 0);
+        dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), leafDir.add(droop).normalize());
+        dummy.scale.set(scaleFactor, scaleFactor, 0.1);
+        dummy.updateMatrix();
+
+        const light = isEmerging ? 0.35 + t * 0.15 : 0.2 + t * 0.1;
+        colorHelper.setHSL(0.28, 0.6, light);
+        leafInst.setMatrixAt(leafIdx, dummy.matrix);
+        leafInst.setColorAt(leafIdx, colorHelper);
+        leafIdx++;
+      }
+    }
+  }
+
+  // Fiddleheads
+  for (let fh = 0; fh < numFiddleheads; fh++) {
+    const fhAngle = (fh / numFiddleheads) * Math.PI * 2;
+    const spiralPts: THREE.Vector3[] = [];
+    const origin = new THREE.Vector3(0, trunkHeight - 0.1, 0);
+    const outDir = new THREE.Vector3(Math.cos(fhAngle), 0, Math.sin(fhAngle));
+    const turns = 2.5;
+    const ptCount = 40;
+
+    for (let i = 0; i <= ptCount; i++) {
+      const t = i / ptCount;
+      const theta = t * turns * Math.PI * 2;
+      const r = 0.2 * (1 - t);
+      spiralPts.push(
+        origin.clone()
+          .add(outDir.clone().multiplyScalar(t * 0.4 + r * Math.cos(theta)))
+          .add(new THREE.Vector3(0, 0.3 + r * Math.sin(theta), 0))
+      );
+    }
+
+    const fhCurve = new THREE.CatmullRomCurve3(spiralPts);
+    hapuuGroup.add(new THREE.Mesh(new THREE.TubeGeometry(fhCurve, 30, 0.04, 5, false), barkMat));
+
+    for (let p = 0; p < ptCount * 6 && fuzzIdx < totalFuzz; p++) {
+      const pt = fhCurve.getPointAt(Math.random());
+      const tan = fhCurve.getTangentAt(Math.random()).normalize();
+      const rand = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+      const out = new THREE.Vector3().crossVectors(tan, rand).normalize();
+      dummy.position.copy(pt).add(out.clone().multiplyScalar(0.04));
+      dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), out);
+      dummy.scale.setScalar(0.6);
+      dummy.updateMatrix();
+      fuzzInst.setMatrixAt(fuzzIdx++, dummy.matrix);
+    }
+  }
+
+  fuzzInst.instanceMatrix.needsUpdate = true;
+  leafInst.instanceMatrix.needsUpdate = true;
+  if (leafInst.instanceColor) leafInst.instanceColor.needsUpdate = true;
+
+  return hapuuGroup;
+}
+
 // ── ʻUlu (Breadfruit) procedural tree ──
 export function createUluTree() {
   const treeGroup = new THREE.Group();
@@ -736,13 +888,9 @@ export function buildPlantModel(plantId: string): THREE.Group {
     }
     case "palapalai":
     case "hapuu": {
-      for (let i = 0; i < 5; i++) {
-        const frond = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.8), plantMat);
-        frond.position.set((Math.random() - 0.5) * 0.3, 0.3 + Math.random() * 0.2, (Math.random() - 0.5) * 0.3);
-        frond.rotation.y = Math.random() * Math.PI * 2;
-        frond.rotation.x = -0.4;
-        group.add(frond);
-      }
+      const hapuu = createHapuu();
+      group.add(hapuu);
+      group.scale.set(0.5, 0.5, 0.5);
       break;
     }
     case "loulu": {

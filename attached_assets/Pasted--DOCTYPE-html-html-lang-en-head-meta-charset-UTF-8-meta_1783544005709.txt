@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Procedural Hāpuʻu (Hawaiian Tree Fern) - Three.js</title>
+   <style>
+       body {
+           margin: 0;
+           overflow: hidden;
+           background-color: #87CEEB; /* Soft sky blue */
+           font-family: sans-serif;
+       }
+       #canvas-container {
+           width: 100vw;
+           height: 100vh;
+       }
+       #ui {
+           position: absolute;
+           bottom: 20px;
+           left: 20px;
+           background: rgba(0, 0, 0, 0.7);
+           color: white;
+           padding: 15px;
+           border-radius: 8px;
+           pointer-events: none;
+       }
+       h1 { margin: 0 0 5px 0; font-size: 1.2rem; color: #a4d257; }
+       p { margin: 0; font-size: 0.9rem; color: #ddd; }
+   </style>
+</head>
+<body>
+   <div id="canvas-container"></div>
+   <div id="ui">
+       <h1>Procedural Hāpuʻu</h1>
+       <p>100% Code-Generated Geometry</p>
+       <p>Left Click: Rotate | Right Click: Pan | Scroll: Zoom</p>
+   </div>
+
+
+   <!-- Load Three.js and OrbitControls from CDN -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+
+   <script>
+       /**
+        * Creates a fully procedural Hawaiian Hāpuʻu (Tree Fern) 3D Model.
+        * Requirements: Self-contained, procedural realism, MeshStandardMaterial, no flatShading,
+        * complex clustered structures (pulu fuzz, lacy leaves, fiddleheads).
+        * @returns {THREE.Group} The complete Hāpuʻu plant.
+        */
+       function createHapuu() {
+           const hapuuGroup = new THREE.Group();
+           const dummy = new THREE.Object3D(); // Helper for instanced mesh transforms
+           const colorHelper = new THREE.Color(); // Helper for instanced colors
+
+
+           // --- CONFIGURATION ---
+           const trunkHeight = 3.5;
+           const trunkRadiusBase = 0.4;
+           const trunkRadiusTop = 0.3;
+          
+           const numFronds = 14;         // Mature sweeping leaves
+           const numEmerging = 4;        // Younger, more upright leaves
+           const numFiddleheads = 3;     // Coiled new growth
+          
+           const totalLeaves = 20000;    // Instances for the lacy fronds
+           const totalFuzz = 20000;      // Instances for the shaggy trunk/fiddlehead fibers (pulu)
+
+
+           // --- MATERIALS (Procedural Realism, No FlatShading) ---
+           const barkMaterial = new THREE.MeshStandardMaterial({
+               color: 0x5c3a21,
+               roughness: 0.9,
+               metalness: 0.05
+           });
+
+
+           // Fiber material for the shaggy "pulu" (golden brown, soft)
+           const fiberMaterial = new THREE.MeshStandardMaterial({
+               color: 0x9e6c27,
+               roughness: 1.0,
+               metalness: 0.0
+           });
+
+
+           // Leaf material (vibrant deep to bright green)
+           const leafMaterial = new THREE.MeshStandardMaterial({
+               color: 0x3d6e27,
+               roughness: 0.7,
+               metalness: 0.0,
+               side: THREE.DoubleSide // Ensure leaves are visible from below
+           });
+
+
+           // --- 1. CORE TRUNK ---
+           // The central structural column that we will cover with fibers.
+           const trunkGeo = new THREE.CylinderGeometry(trunkRadiusTop, trunkRadiusBase, trunkHeight, 12, 1);
+           trunkGeo.translate(0, trunkHeight / 2, 0); // Base at 0,0,0
+           const trunkMesh = new THREE.Mesh(trunkGeo, barkMaterial);
+           trunkMesh.castShadow = true;
+           trunkMesh.receiveShadow = true;
+           hapuuGroup.add(trunkMesh);
+
+
+           // --- 2. PULU (Shaggy Golden Fuzz) ---
+           // We use tiny cylinders, heavily instanced, to wrap the trunk and new growth in a soft fuzz.
+           const fuzzGeo = new THREE.CylinderGeometry(0.004, 0.001, 0.15, 3);
+           fuzzGeo.translate(0, 0.075, 0); // Move origin to base so we can point it easily
+           const fuzzInstanced = new THREE.InstancedMesh(fuzzGeo, fiberMaterial, totalFuzz);
+           fuzzInstanced.castShadow = true;
+           fuzzInstanced.receiveShadow = true;
+           hapuuGroup.add(fuzzInstanced);
+
+
+           let fuzzIndex = 0;
+
+
+           // Generate Fuzz on Trunk
+           const trunkFuzzCount = 15000;
+           for (let i = 0; i < trunkFuzzCount; i++) {
+               const h = Math.random() * trunkHeight;
+               const theta = Math.random() * Math.PI * 2;
+              
+               // Radius tapers towards top
+               const r = trunkRadiusBase - (trunkRadiusBase - trunkRadiusTop) * (h / trunkHeight);
+               const surfacePoint = new THREE.Vector3(Math.cos(theta) * r, h, Math.sin(theta) * r);
+              
+               // Normal direction pointing outward from trunk
+               const normal = new THREE.Vector3(Math.cos(theta), 0, Math.sin(theta)).normalize();
+              
+               // Angle the fuzz slightly downward to mimic gravity and drooping pulu
+               const droopNormal = normal.clone().add(new THREE.Vector3(0, -0.6 + (Math.random()*0.2), 0)).normalize();
+
+
+               dummy.position.copy(surfacePoint);
+               // Align cylinder's Y-axis to the droop direction
+               dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), droopNormal);
+              
+               // Add slight chaotic rotation
+               dummy.rotateZ(Math.random() * 0.4 - 0.2);
+               dummy.rotateX(Math.random() * 0.4 - 0.2);
+
+
+               dummy.updateMatrix();
+               fuzzInstanced.setMatrixAt(fuzzIndex++, dummy.matrix);
+           }
+
+
+           // --- 3. LACY FRONDS (The Crown) ---
+           // We use flattened cones to simulate the delicate bi-pinnate leaflets (pinnae).
+           const leafGeo = new THREE.ConeGeometry(0.05, 0.6, 4);
+           leafGeo.translate(0, 0.3, 0); // Origin at base
+          
+           const leavesInstanced = new THREE.InstancedMesh(leafGeo, leafMaterial, totalLeaves);
+           leavesInstanced.castShadow = true;
+           leavesInstanced.receiveShadow = true;
+           hapuuGroup.add(leavesInstanced);
+
+
+           let leafIndex = 0;
+
+
+           // Helper to generate a frond curve
+           function createFrondCurve(angle, isEmerging) {
+               const start = new THREE.Vector3(0, trunkHeight - 0.1, 0);
+               const length = isEmerging ? 2.0 + Math.random() * 0.5 : 3.5 + Math.random() * 1.0;
+              
+               // Calculate sweeping arch points
+               const outVector = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+              
+               const p1 = start.clone().add(outVector.clone().multiplyScalar(length * 0.3)).add(new THREE.Vector3(0, length * 0.5, 0));
+              
+               let p2HeightOffset = isEmerging ? length * 0.7 : length * 0.3;
+               const p2 = start.clone().add(outVector.clone().multiplyScalar(length * 0.7)).add(new THREE.Vector3(0, p2HeightOffset, 0));
+              
+               let p3HeightOffset = isEmerging ? length * 0.6 : -length * 0.2;
+               const p3 = start.clone().add(outVector.clone().multiplyScalar(length)).add(new THREE.Vector3(0, p3HeightOffset, 0));
+
+
+               return new THREE.CatmullRomCurve3([start, p1, p2, p3]);
+           }
+
+
+           // Generate Mature and Emerging Fronds
+           const totalStems = numFronds + numEmerging;
+           const stemGeoBase = new THREE.TubeGeometry(new THREE.LineCurve3(new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0)), 20, 0.03, 5, false);
+
+
+           for (let f = 0; f < totalStems; f++) {
+               const isEmerging = f >= numFronds;
+               const angle = (f / totalStems) * Math.PI * 2 + (Math.random() * 0.2);
+               const curve = createFrondCurve(angle, isEmerging);
+
+
+               // Render the main stem (rachis)
+               const stemGeo = new THREE.TubeGeometry(curve, 30, isEmerging ? 0.025 : 0.03, 5, false);
+               const stemMesh = new THREE.Mesh(stemGeo, barkMaterial); // Stems are typically brown/greenish
+               stemMesh.castShadow = true;
+               hapuuGroup.add(stemMesh);
+
+
+               // Add lacy leaflets (pinnae) along the stem
+               const numPinnaePairs = isEmerging ? 50 : 80;
+              
+               for (let p = 5; p < numPinnaePairs; p++) { // Start a bit away from the trunk
+                   if (leafIndex >= totalLeaves - 2) break; // Safety check
+
+
+                   const t = p / numPinnaePairs;
+                   const position = curve.getPointAt(t);
+                   const tangent = curve.getTangentAt(t).normalize();
+                   const up = new THREE.Vector3(0, 1, 0);
+                  
+                   // Binormal points perpendicular to the stem and gravity
+                   const binormal = new THREE.Vector3().crossVectors(tangent, up).normalize();
+                  
+                   // Frond shape tapers at ends and base (sine wave mapping)
+                   const widthProfile = Math.pow(Math.sin(t * Math.PI), 0.7);
+                   const scaleFactor = widthProfile * (isEmerging ? 0.7 : 1.2);
+
+
+                   // Add some fuzz to the base of the stems
+                   if (t < 0.2 && fuzzIndex < totalFuzz - 2) {
+                       for(let fz=0; fz<2; fz++) {
+                           const fuzzPos = position.clone().add(new THREE.Vector3((Math.random()-0.5)*0.05, (Math.random()-0.5)*0.05, (Math.random()-0.5)*0.05));
+                           dummy.position.copy(fuzzPos);
+                           dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize());
+                           dummy.scale.set(1, 1, 1);
+                           dummy.updateMatrix();
+                           fuzzInstanced.setMatrixAt(fuzzIndex++, dummy.matrix);
+                       }
+                   }
+
+
+                   // Left and Right Pinnae (Leaflets)
+                   const angles = [1, -1];
+                   angles.forEach((dir) => {
+                       dummy.position.copy(position);
+                      
+                       // Vector pointing outward from the stem, angled slightly forward towards tip
+                       const leafDir = binormal.clone().multiplyScalar(dir).add(tangent.clone().multiplyScalar(0.4)).normalize();
+                      
+                       // Droop the leaves down slightly based on weight
+                       const droop = new THREE.Vector3(0, -0.2 - (1-widthProfile)*0.3, 0);
+                       const finalDir = leafDir.add(droop).normalize();
+
+
+                       dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), finalDir);
+                      
+                       // Scale to flatten into a lacy shape
+                       dummy.scale.set(1 * scaleFactor, 1 * scaleFactor, 0.1);
+                       dummy.updateMatrix();
+                      
+                       // Color gradient: Older leaves darker base, newer growth brighter tips
+                       const hue = 0.28;
+                       const sat = 0.6;
+                       // Lightness changes based on position and age
+                       const light = isEmerging ? (0.35 + t * 0.15) : (0.2 + t * 0.1);
+                       colorHelper.setHSL(hue, sat, light);
+                      
+                       leavesInstanced.setMatrixAt(leafIndex, dummy.matrix);
+                       leavesInstanced.setColorAt(leafIndex, colorHelper);
+                       leafIndex++;
+                   });
+               }
+           }
+
+
+           // --- 4. FIDDLEHEADS (Coiled new growth in center) ---
+           // Procedurally generating Archimedean spirals mapping into 3D.
+           for (let fh = 0; fh < numFiddleheads; fh++) {
+               const fhAngle = (fh / numFiddleheads) * Math.PI * 2;
+              
+               const spiralPoints = [];
+               const origin = new THREE.Vector3(0, trunkHeight - 0.1, 0);
+               const outDir = new THREE.Vector3(Math.cos(fhAngle), 0, Math.sin(fhAngle));
+               const upDir = new THREE.Vector3(0, 1, 0);
+              
+               const turns = 2.5;
+               const pointsCount = 40;
+              
+               for (let i = 0; i <= pointsCount; i++) {
+                   const t = i / pointsCount;
+                   const theta = t * turns * Math.PI * 2;
+                   // Radius of spiral shrinks as it coils inward
+                   const r = 0.2 * (1 - t);
+                  
+                   // Math for a vertical spiral
+                   const advance = t * 0.4; // Moves out from the center
+                   const vertOffset = 0.3 + r * Math.sin(theta);
+                   const horizOffset = advance + r * Math.cos(theta);
+                  
+                   const point = origin.clone()
+                       .add(outDir.clone().multiplyScalar(horizOffset))
+                       .add(upDir.clone().multiplyScalar(vertOffset));
+                  
+                   spiralPoints.push(point);
+               }
+
+
+               const fhCurve = new THREE.CatmullRomCurve3(spiralPoints);
+               const fhGeo = new THREE.TubeGeometry(fhCurve, 40, 0.04, 6, false);
+               const fhMesh = new THREE.Mesh(fhGeo, barkMaterial);
+               fhMesh.castShadow = true;
+               hapuuGroup.add(fhMesh);
+
+
+               // Fuzz covering the fiddleheads (They are very hairy!)
+               for (let p = 0; p < pointsCount * 20; p++) {
+                   if (fuzzIndex >= totalFuzz) break;
+                  
+                   const t = Math.random();
+                   const point = fhCurve.getPointAt(t);
+                   const tangent = fhCurve.getTangentAt(t).normalize();
+                  
+                   // Random outward vector perpendicular to tangent
+                   const randomVec = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize();
+                   const outward = new THREE.Vector3().crossVectors(tangent, randomVec).normalize();
+                  
+                   // Position slightly off the exact curve
+                   const fuzzPos = point.clone().add(outward.clone().multiplyScalar(0.04));
+                  
+                   dummy.position.copy(fuzzPos);
+                   dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), outward);
+                   dummy.scale.set(0.6, 0.6, 0.6); // Slightly smaller fuzz on new growth
+                   dummy.updateMatrix();
+                   fuzzInstanced.setMatrixAt(fuzzIndex++, dummy.matrix);
+               }
+           }
+
+
+           // Update instance matrices
+           fuzzInstanced.instanceMatrix.needsUpdate = true;
+           leavesInstanced.instanceMatrix.needsUpdate = true;
+           leavesInstanced.instanceColor.needsUpdate = true;
+
+
+           // Final optimization grouping
+           return hapuuGroup;
+       }
+
+
+       // ==========================================
+       // SCENE SETUP & PREVIEW ENVIRONMENT
+       // ==========================================
+
+
+       const container = document.getElementById('canvas-container');
+       const scene = new THREE.Scene();
+       // Soft fog to blend with the sky background
+       scene.fog = new THREE.FogExp2(0x87CEEB, 0.03);
+
+
+       const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+       camera.position.set(6, 4, 8);
+
+
+       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+       renderer.setSize(window.innerWidth, window.innerHeight);
+       renderer.setPixelRatio(window.devicePixelRatio);
+       renderer.shadowMap.enabled = true;
+       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+       container.appendChild(renderer.domElement);
+
+
+       const controls = new THREE.OrbitControls(camera, renderer.domElement);
+       controls.enableDamping = true;
+       controls.dampingFactor = 0.05;
+       controls.target.set(0, 2.5, 0); // Focus on the middle of the fern
+
+
+       // --- LIGHTING ---
+       const ambientLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+       scene.add(ambientLight);
+
+
+       const dirLight = new THREE.DirectionalLight(0xfff5e6, 1.2); // Warm sunlight
+       dirLight.position.set(5, 10, 5);
+       dirLight.castShadow = true;
+       dirLight.shadow.camera.top = 8;
+       dirLight.shadow.camera.bottom = -8;
+       dirLight.shadow.camera.left = -8;
+       dirLight.shadow.camera.right = 8;
+       dirLight.shadow.camera.near = 0.1;
+       dirLight.shadow.camera.far = 40;
+       dirLight.shadow.bias = -0.001; // Reduce shadow acne
+       scene.add(dirLight);
+
+
+       // --- ENVIRONMENT ---
+       // Simple ground plane to catch shadows
+       const groundGeo = new THREE.PlaneGeometry(50, 50);
+       const groundMat = new THREE.MeshStandardMaterial({
+           color: 0x4a3c2c, // Dark forest soil
+           roughness: 1.0,
+           metalness: 0.0
+       });
+       const ground = new THREE.Mesh(groundGeo, groundMat);
+       ground.rotation.x = -Math.PI / 2;
+       ground.receiveShadow = true;
+       scene.add(ground);
+
+
+       // Add a few scattered rocks at the base for scale
+       const rockGeo = new THREE.DodecahedronGeometry(0.2, 1);
+       const rockMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.8 });
+       for(let i=0; i<5; i++) {
+           const rock = new THREE.Mesh(rockGeo, rockMat);
+           rock.position.set((Math.random()-0.5)*2, 0, (Math.random()-0.5)*2);
+           rock.rotation.set(Math.random(), Math.random(), Math.random());
+           rock.scale.set(1, Math.random()*0.5 + 0.5, 1);
+           rock.castShadow = true;
+           rock.receiveShadow = true;
+           scene.add(rock);
+       }
+
+
+       // --- GENERATE AND ADD HĀPUʻU ---
+       console.log("Generating Procedural Hāpuʻu...");
+       const hapuu = createHapuu();
+       scene.add(hapuu);
+
+
+       // --- ANIMATION LOOP ---
+       function animate() {
+           requestAnimationFrame(animate);
+           controls.update();
+          
+           // Slow idle rotation of the plant
+           // hapuu.rotation.y += 0.001;
+
+
+           renderer.render(scene, camera);
+       }
+
+
+       // Handle Window Resize
+       window.addEventListener('resize', () => {
+           camera.aspect = window.innerWidth / window.innerHeight;
+           camera.updateProjectionMatrix();
+           renderer.setSize(window.innerWidth, window.innerHeight);
+       });
+
+
+       // Start render
+       animate();
+
+
+   </script>
+</body>
+</html>
+
