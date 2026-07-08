@@ -1403,11 +1403,18 @@ export function MapPage() {
         const intersects = s.raycaster.intersectObjects(s.spawnedPlants[i].children, true);
         if (intersects.length > 0) {
           const worldPos = s.spawnedPlants[i].position.clone();
-          const baseY = worldPos.y;
+          // Compute plant bounding box to frame it properly
+          const box = new THREE.Box3().setFromObject(s.spawnedPlants[i]);
+          const center = box.getCenter(new THREE.Vector3());
+          const size = box.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+          // Camera distance to fit the whole plant in view
+          const fov = s.camera.fov * (Math.PI / 180);
+          const dist = (maxDim / 2) / Math.tan(fov / 2) * 1.5; // 1.5x padding
           cameraTargetRef.current = {
-            target: new THREE.Vector3(worldPos.x, baseY + 10, worldPos.z),
-            distance: 5,
-            height: -9,
+            target: center,
+            distance: dist,
+            height: -dist * 0.35, // slight low angle
             active: true,
           };
           setSelectedPlantIdx(i);
