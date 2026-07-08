@@ -1597,7 +1597,10 @@ export function MapPage() {
 
   const handleDigUp = () => {
     if (selectedPlantIdx !== null) {
-      cameraTargetRef.current = null;
+      // Start smooth zoom-out before removing plant
+      if (cameraTargetRef.current) {
+        cameraTargetRef.current.active = false;
+      }
       sceneRef.current?.removePlant3D(selectedPlantIdx);
       removePlacedPlant(selectedPlantIdx);
     }
