@@ -12,34 +12,53 @@ export function PlantPreview({ plantId, className = "" }: { plantId: string; cla
     let animId = 0;
     let renderer: THREE.WebGLRenderer | null = null;
 
-    // Teardown helper — called when off-screen or on unmount
+    // When we dispose a renderer we must stop Three.js's onContextRestore
+    // handler from firing on the dead renderer. We do this by registering a
+    // capture-phase listener that swallows the event before Three.js sees it.
+    let restoreBlocker: ((e: Event) => void) | null = null;
+
+    const blockRestore = () => {
+      if (restoreBlocker) return; // already blocked
+      const fn = (e: Event) => { e.stopImmediatePropagation(); };
+      restoreBlocker = fn;
+      canvas.addEventListener("webglcontextrestored", fn, true);
+    };
+
+    const unblockRestore = () => {
+      if (!restoreBlocker) return;
+      canvas.removeEventListener("webglcontextrestored", restoreBlocker, true);
+      restoreBlocker = null;
+    };
+
     const teardown = () => {
       cancelAnimationFrame(animId);
       animId = 0;
       if (renderer) {
+        // Block Three.js's onContextRestore BEFORE dispose so it can't access
+        // the now-dead renderer if the browser later restores the GL context.
+        blockRestore();
         renderer.dispose();
         renderer = null;
       }
     };
 
-    // Setup helper — called when the canvas enters the viewport
     const setup = () => {
-      // Already running
-      if (renderer) return;
+      if (renderer) return; // already running
 
-      // Canvas may still have no layout size on first paint
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
       if (w === 0 || h === 0) return;
 
-      // Guard: attempt to get a GL context first so we can bail gracefully
-      // before handing the canvas to Three.js (which throws on null context)
+      // Pre-flight check — bail gracefully if context limit is hit
       const testCtx = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
-      if (!testCtx) return; // context limit hit — skip silently
+      if (!testCtx) return;
 
       try {
-        const dpr = Math.min(window.devicePixelRatio, 2);
+        // Remove the restore blocker (if any) before creating a new renderer
+        // so Three.js can register its own handlers cleanly.
+        unblockRestore();
 
+        const dpr = Math.min(window.devicePixelRatio, 2);
         renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
         renderer.setSize(w, h, false);
         renderer.setPixelRatio(dpr);
@@ -64,7 +83,7 @@ export function PlantPreview({ plantId, className = "" }: { plantId: string; cla
         scene.add(plant);
         plant.updateMatrixWorld(true);
 
-        // Measure tight bounding box from every transformed vertex
+        // Tight bounding box from actual vertices
         const verts: THREE.Vector3[] = [];
         plant.traverse((child) => {
           if (child instanceof THREE.Mesh) {
@@ -100,12 +119,10 @@ export function PlantPreview({ plantId, className = "" }: { plantId: string; cla
         };
         animate();
       } catch {
-        // WebGL init failed — leave canvas blank, don't crash the app
         teardown();
       }
     };
 
-    // Use IntersectionObserver so we only hold a GL context when visible
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
@@ -121,6 +138,8 @@ export function PlantPreview({ plantId, className = "" }: { plantId: string; cla
     return () => {
       observer.disconnect();
       teardown();
+      // Clean up the restore blocker on unmount
+      unblockRestore();
     };
   }, [plantId]);
 

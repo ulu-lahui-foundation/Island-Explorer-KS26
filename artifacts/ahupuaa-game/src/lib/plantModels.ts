@@ -163,6 +163,140 @@ export function createNaupakaBush() {
   return bushGroup;
 }
 
+// ── Palapalai (Hawaiian lace fern) procedural model ──
+export function createPalapalai() {
+  const plantGroup = new THREE.Group();
+  const dummy = new THREE.Object3D();
+  const upVector = new THREE.Vector3(0, 1, 0);
+
+  const numFronds = 12;
+  const branchesPerFrond = 18;
+  const leavesPerBranch = 8;
+  const fuzzPerFrond = 60;
+
+  const totalBranches = numFronds * branchesPerFrond * 2;
+  const totalLeaves = totalBranches * leavesPerBranch * 2;
+  const totalFuzz = numFronds * fuzzPerFrond;
+
+  const stemMat = new THREE.MeshStandardMaterial({ color: 0x4a3b2c, roughness: 0.95, metalness: 0.0 });
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x6ca332, roughness: 0.6, metalness: 0.05, side: THREE.DoubleSide });
+
+  const branchGeo = new THREE.CylinderGeometry(0.003, 0.001, 1, 4);
+  branchGeo.translate(0, 0.5, 0);
+  branchGeo.rotateX(Math.PI / 2);
+
+  const leafGeo = new THREE.ConeGeometry(0.012, 0.06, 4);
+  leafGeo.translate(0, 0.03, 0);
+  leafGeo.rotateY(Math.PI / 4);
+  leafGeo.scale(1, 1, 0.15);
+  leafGeo.rotateX(Math.PI / 2);
+
+  const fuzzGeo = new THREE.CylinderGeometry(0.0005, 0.0005, 0.02, 3);
+  fuzzGeo.translate(0, 0.01, 0);
+  fuzzGeo.rotateX(Math.PI / 2);
+
+  const branchInst = new THREE.InstancedMesh(branchGeo, stemMat, totalBranches);
+  const leafInst = new THREE.InstancedMesh(leafGeo, leafMat, totalLeaves);
+  const fuzzInst = new THREE.InstancedMesh(fuzzGeo, stemMat, totalFuzz);
+
+  let branchIdx = 0;
+  let leafIdx = 0;
+  let fuzzIdx = 0;
+
+  for (let i = 0; i < numFronds; i++) {
+    const frondAngle = (i / numFronds) * Math.PI * 2 + (Math.random() * 0.2 - 0.1);
+    const frondScale = 0.6 + Math.pow(Math.random(), 2) * 0.6;
+    const frondDroop = 0.5 + Math.random() * 0.7;
+
+    const curve = new THREE.QuadraticBezierCurve3(
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(0, frondScale * 1.8, frondScale * 0.4),
+      new THREE.Vector3(0, frondScale * (1.5 - frondDroop), frondScale * 1.8)
+    );
+    const rotMat = new THREE.Matrix4().makeRotationY(frondAngle);
+    curve.v1.applyMatrix4(rotMat);
+    curve.v2.applyMatrix4(rotMat);
+
+    const stemGeo = new THREE.TubeGeometry(curve, 24, 0.012, 4, false);
+    plantGroup.add(new THREE.Mesh(stemGeo, stemMat));
+
+    // Fuzz near stem base
+    for (let f = 0; f < fuzzPerFrond && fuzzIdx < totalFuzz; f++) {
+      const t = Math.pow(Math.random(), 2) * 0.35;
+      const pt = curve.getPointAt(t);
+      const tan = curve.getTangentAt(t);
+      const randomDir = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+      const dot = randomDir.dot(tan);
+      randomDir.sub(tan.clone().multiplyScalar(dot)).normalize();
+      dummy.position.copy(pt).add(randomDir.clone().multiplyScalar(0.012));
+      dummy.lookAt(dummy.position.clone().add(randomDir));
+      dummy.scale.set(1, 1, Math.random() * 1.5 + 0.5);
+      dummy.updateMatrix();
+      fuzzInst.setMatrixAt(fuzzIdx++, dummy.matrix);
+    }
+
+    // Branches and leaflets
+    for (let b = 0; b < branchesPerFrond; b++) {
+      const t_branch = 0.15 + (b / branchesPerFrond) * 0.83;
+      const branchPos = curve.getPointAt(t_branch);
+      const branchTan = curve.getTangentAt(t_branch);
+
+      let branchRight = new THREE.Vector3().crossVectors(branchTan, upVector).normalize();
+      if (branchRight.lengthSq() < 0.001) branchRight.set(Math.cos(frondAngle), 0, -Math.sin(frondAngle)).normalize();
+      const branchNormal = new THREE.Vector3().crossVectors(branchRight, branchTan).normalize();
+
+      const taper = Math.sin(Math.PI * (t_branch - 0.15) / 0.85);
+      const branchLength = ((1 - t_branch) * 0.7 + taper * 0.3) * frondScale * 0.45;
+
+      for (const side of [-1, 1]) {
+        if (branchIdx >= totalBranches) break;
+        const dir = branchRight.clone().multiplyScalar(side)
+          .add(branchTan.clone().multiplyScalar(0.6))
+          .add(branchNormal.clone().multiplyScalar(-0.15))
+          .normalize();
+        const endPos = branchPos.clone().add(dir.clone().multiplyScalar(branchLength));
+
+        dummy.position.copy(branchPos);
+        dummy.lookAt(endPos);
+        dummy.scale.set(1, 1, branchLength);
+        dummy.updateMatrix();
+        branchInst.setMatrixAt(branchIdx++, dummy.matrix);
+
+        for (let l = 0; l < leavesPerBranch; l++) {
+          if (leafIdx >= totalLeaves - 2) break;
+          const t_leaf = (l + 0.5) / leavesPerBranch;
+          const leafBasePos = branchPos.clone().lerp(endPos, t_leaf);
+          const leafScale = (1 - t_leaf) * 0.7 + 0.3;
+          const leafRight = new THREE.Vector3().crossVectors(dir, upVector).normalize();
+
+          for (const lSide of [-1, 1]) {
+            if (leafIdx >= totalLeaves) break;
+            const lDir = leafRight.clone().multiplyScalar(lSide)
+              .add(dir.clone().multiplyScalar(0.8))
+              .add(upVector.clone().multiplyScalar(0.3))
+              .normalize();
+            dummy.position.copy(leafBasePos);
+            dummy.lookAt(leafBasePos.clone().add(lDir));
+            dummy.scale.setScalar(leafScale);
+            dummy.updateMatrix();
+            leafInst.setMatrixAt(leafIdx++, dummy.matrix);
+          }
+        }
+      }
+    }
+  }
+
+  branchInst.instanceMatrix.needsUpdate = true;
+  leafInst.instanceMatrix.needsUpdate = true;
+  fuzzInst.instanceMatrix.needsUpdate = true;
+
+  plantGroup.add(branchInst);
+  plantGroup.add(leafInst);
+  plantGroup.add(fuzzInst);
+
+  return plantGroup;
+}
+
 // ── Hāpuʻu (Hawaiian Tree Fern) procedural model ──
 export function createHapuu() {
   const hapuuGroup = new THREE.Group();
@@ -886,7 +1020,12 @@ export function buildPlantModel(plantId: string): THREE.Group {
       group.scale.set(4, 4, 4);
       break;
     }
-    case "palapalai":
+    case "palapalai": {
+      const palapalai = createPalapalai();
+      group.add(palapalai);
+      group.scale.set(0.8, 0.8, 0.8);
+      break;
+    }
     case "hapuu": {
       const hapuu = createHapuu();
       group.add(hapuu);
