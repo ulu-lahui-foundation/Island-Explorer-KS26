@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Procedural Dense ʻAʻaliʻi Bush - Three.js</title>
+   <style>
+       body {
+           margin: 0;
+           overflow: hidden;
+           background-color: #e0ece5; /* Soft, bright outdoor daylight */
+           font-family: sans-serif;
+       }
+       #canvas-container {
+           width: 100vw;
+           height: 100vh;
+       }
+       #ui {
+           position: absolute;
+           bottom: 20px;
+           left: 20px;
+           background: rgba(0, 0, 0, 0.75);
+           color: white;
+           padding: 15px;
+           border-radius: 8px;
+           pointer-events: none;
+       }
+       h1 { margin: 0 0 5px 0; font-size: 1.2rem; color: #4ade80; } /* Bright green text */
+       p { margin: 0; font-size: 0.9rem; color: #cbd5e1; }
+   </style>
+</head>
+<body>
+   <div id="canvas-container"></div>
+   <div id="ui">
+       <h1>Procedural Dense ʻAʻaliʻi Bush</h1>
+       <p>100% Code-Generated Geometry</p>
+       <p>Left Click: Rotate | Right Click: Pan | Scroll: Zoom</p>
+   </div>
+
+
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+
+   <script>
+       /**
+        * Creates a dense, mounded Hawaiian ʻAʻaliʻi (Dodonaea viscosa) bush.
+        * Requirements: Self-contained, procedural realism, MeshStandardMaterial,
+        * dense foliage, bright glossy green leaves, spreading bushy form.
+        * @returns {THREE.Group} The complete ʻAʻaliʻi plant.
+        */
+       function createDenseAalii() {
+           const aaliiGroup = new THREE.Group();
+           const dummy = new THREE.Object3D();
+           const colorHelper = new THREE.Color();
+
+
+           // --- CONFIGURATION ---
+           // Adjusting for a dense, mounded bush rather than a windswept tree
+           const maxBranchDepth = 3;
+           const trunkCount = 10;      // Many basal stems creating a wide bush
+           const leavesPerUnit = 45;   // Very high leaf density on outer branches
+
+
+           // --- MATERIALS ---
+           // Hidden inner branches
+           const branchMat = new THREE.MeshStandardMaterial({
+               color: 0x5c544d, // Dark grayish-brown
+               roughness: 0.9,
+               metalness: 0.0
+           });
+
+
+           // Bright, glossy, vibrant green leaves matching the reference photo
+           const leafMat = new THREE.MeshStandardMaterial({
+               color: 0x1f5c18, // Deep rich green base
+               roughness: 0.2,  // Very glossy
+               metalness: 0.05,
+               side: THREE.DoubleSide
+           });
+
+
+           // --- 1. BRANCHING LOGIC (Mounded, Radial Spread) ---
+           const allBranches = [];
+
+
+           function generateBranch(startPoint, direction, length, radius, depth) {
+               // To form a bush, branches arc outward and slightly downward toward the ends
+               const droop = new THREE.Vector3(0, -length * 0.15, 0);
+              
+               // Midpoint bows outward aggressively to create volume
+               const midPoint = startPoint.clone()
+                   .add(direction.clone().multiplyScalar(length * 0.5))
+                   .add(new THREE.Vector3(
+                       direction.x * length * 0.2, // push outward
+                       length * 0.2,               // arch upward
+                       direction.z * length * 0.2  // push outward
+                   ));
+
+
+               const endPoint = startPoint.clone()
+                   .add(direction.clone().multiplyScalar(length))
+                   .add(droop);
+
+
+               const curve = new THREE.QuadraticBezierCurve3(startPoint, midPoint, endPoint);
+               allBranches.push({ curve, length, radius, depth });
+
+
+               // Inner branches are rarely seen due to leaf density, but we still generate them
+               const tubeGeo = new THREE.TubeGeometry(curve, Math.max(5, 10 - depth * 2), radius, 5, false);
+               const branchMesh = new THREE.Mesh(tubeGeo, branchMat);
+               branchMesh.castShadow = true;
+               branchMesh.receiveShadow = true;
+               aaliiGroup.add(branchMesh);
+
+
+               // Recursive sub-branching
+               if (depth < maxBranchDepth) {
+                   // Produce many children to create a dense canopy shell
+                   const numChildren = depth === 0 ? 4 : (depth === 1 ? 3 : 2);
+                  
+                   for (let i = 0; i < numChildren; i++) {
+                       const t = 0.3 + (i / numChildren) * 0.6 + (Math.random() * 0.1);
+                       const spawnPoint = curve.getPointAt(t);
+                       const parentTangent = curve.getTangentAt(t).normalize();
+                      
+                       // Spread widely to fill the volume of the bush
+                       const spreadAngle = Math.random() * Math.PI * 2;
+                       const spreadOut = 0.6 + Math.random() * 0.4; // Very wide branching angle
+                      
+                       const binormal = new THREE.Vector3().crossVectors(parentTangent, new THREE.Vector3(0, 1, 0)).normalize();
+                       if(binormal.length() < 0.1) binormal.set(1,0,0);
+                       const normal = new THREE.Vector3().crossVectors(binormal, parentTangent).normalize();
+                      
+                       let childDir = parentTangent.clone().multiplyScalar(1 - spreadOut)
+                           .add(binormal.clone().multiplyScalar(Math.cos(spreadAngle) * spreadOut))
+                           .add(normal.clone().multiplyScalar(Math.sin(spreadAngle) * spreadOut))
+                           .normalize();
+                          
+                       // Pull branches upward slightly so it doesn't collapse
+                       childDir.y += 0.4;
+                       childDir.normalize();
+
+
+                       const childLength = length * (0.6 + Math.random() * 0.3);
+                       const childRadius = radius * 0.65;
+                      
+                       generateBranch(spawnPoint, childDir, childLength, childRadius, depth + 1);
+                   }
+               }
+           }
+
+
+           // Start the generation from the ground in a radiating circle
+           for (let t = 0; t < trunkCount; t++) {
+               const angle = (t / trunkCount) * Math.PI * 2 + (Math.random() * 0.5);
+               const startPos = new THREE.Vector3(Math.cos(angle)*0.2, 0, Math.sin(angle)*0.2);
+              
+               // Trunks lean outward radially to form a dome/bush shape
+               const baseDir = new THREE.Vector3(
+                   Math.cos(angle) * 0.6,
+                   1.0,
+                   Math.sin(angle) * 0.6
+               ).normalize();
+              
+               generateBranch(startPos, baseDir, 2.0 + Math.random() * 1.0, 0.05, 0);
+           }
+
+
+           // --- 2. LEAF GENERATION (Dense, Bright, Glossy) ---
+           const leafLength = 0.25; // Slightly shorter leaves clustered tightly together
+           const leafGeo = new THREE.CylinderGeometry(0.01, 0.01, leafLength, 5, 4);
+           leafGeo.translate(0, leafLength / 2, 0);
+          
+           const pos = leafGeo.attributes.position;
+           for (let i = 0; i < pos.count; i++) {
+               let y = pos.getY(i);
+               let t = y / leafLength;
+              
+               let widthProfile = Math.sin(t * Math.PI) * Math.pow(1 - t, 0.2);
+               let x = pos.getX(i) * widthProfile * 5.0;
+               let z = pos.getZ(i) * 0.15;
+              
+               z += Math.abs(x) * 0.15; // V-fold
+               z -= Math.sin(t * Math.PI) * 0.02; // Curve
+              
+               pos.setXYZ(i, x, y, z);
+           }
+           leafGeo.computeVertexNormals();
+
+
+           // Calculate total leaves for outermost branches
+           let totalLeaves = 0;
+           allBranches.forEach(b => {
+               if (b.depth >= 2) totalLeaves += Math.floor(b.length * leavesPerUnit);
+           });
+
+
+           const leavesInstanced = new THREE.InstancedMesh(leafGeo, leafMat, totalLeaves);
+           leavesInstanced.castShadow = true;
+           leavesInstanced.receiveShadow = true;
+           aaliiGroup.add(leavesInstanced);
+
+
+           let globalLeafIdx = 0;
+
+
+           // Place leaves heavily clustered to create the "wall of green"
+           allBranches.forEach(branch => {
+               if (branch.depth < 2) return;
+              
+               const numLeaves = Math.floor(branch.length * leavesPerUnit);
+              
+               for (let i = 0; i < numLeaves; i++) {
+                   if (globalLeafIdx >= totalLeaves) break;
+
+
+                   // Distribute smoothly along the branch, heavily packed
+                   const t = Math.random();
+                   const point = branch.curve.getPointAt(t);
+                   const tangent = branch.curve.getTangentAt(t).normalize();
+                   const up = new THREE.Vector3(0, 1, 0);
+                  
+                   const binormal = new THREE.Vector3().crossVectors(tangent, up).normalize();
+                   const normal = new THREE.Vector3().crossVectors(binormal, tangent).normalize();
+
+
+                   const angle = i * 2.39996 + (Math.random());
+                  
+                   const leafOut = new THREE.Vector3()
+                       .addScaledVector(binormal, Math.cos(angle))
+                       .addScaledVector(normal, Math.sin(angle))
+                       .normalize();
+
+
+                   // Point leaves outward toward the sun to create the dense surface shell
+                   const leafDir = leafOut.clone().multiplyScalar(0.7)
+                       .add(tangent.clone().multiplyScalar(0.3))
+                       .add(new THREE.Vector3(0, 0.5, 0)) // Reaching up and out
+                       .normalize();
+
+
+                   dummy.position.copy(point);
+                   dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), leafDir);
+                  
+                   // Random noise so they don't look too uniform
+                   dummy.rotateY(Math.random() * 0.6 - 0.3);
+                   dummy.rotateX(Math.random() * 0.3);
+                  
+                   const sizeScale = 0.7 + Math.random() * 0.5;
+                   dummy.scale.set(sizeScale, sizeScale, sizeScale);
+                   dummy.updateMatrix();
+
+
+                   // Vibrant color variation matching the reference photo
+                   // Base is deep green, highlights are bright yellow-green
+                   const isHighlight = Math.random() > 0.7;
+                   const hue = isHighlight ? 0.28 : 0.33; // Bright green vs rich green
+                   const sat = isHighlight ? 0.8 : 0.6;
+                   const light = isHighlight ? 0.45 : 0.25;
+                   colorHelper.setHSL(hue, sat, light);
+
+
+                   leavesInstanced.setMatrixAt(globalLeafIdx, dummy.matrix);
+                   leavesInstanced.setColorAt(globalLeafIdx, colorHelper.clone());
+                   globalLeafIdx++;
+               }
+           });
+
+
+           leavesInstanced.instanceMatrix.needsUpdate = true;
+           leavesInstanced.instanceColor.needsUpdate = true;
+
+
+           return aaliiGroup;
+       }
+
+
+       // ==========================================
+       // SCENE SETUP & PREVIEW ENVIRONMENT
+       // ==========================================
+
+
+       const container = document.getElementById('canvas-container');
+       const scene = new THREE.Scene();
+       scene.fog = new THREE.FogExp2(0xe0ece5, 0.02);
+
+
+       const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+       camera.position.set(6, 4, 6);
+
+
+       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+       renderer.setSize(window.innerWidth, window.innerHeight);
+       renderer.setPixelRatio(window.devicePixelRatio);
+       renderer.shadowMap.enabled = true;
+       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+       container.appendChild(renderer.domElement);
+
+
+       const controls = new THREE.OrbitControls(camera, renderer.domElement);
+       controls.enableDamping = true;
+       controls.dampingFactor = 0.05;
+       controls.target.set(0, 1.2, 0); // Focus on the center of the bush
+
+
+       // --- LIGHTING ---
+       // Cool ambient daylight mixed with ground bounce
+       const ambientLight = new THREE.HemisphereLight(0xffffff, 0xaabbcc, 0.7);
+       scene.add(ambientLight);
+
+
+       // Strong, bright directional sunlight to create glossy leaf highlights
+       const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+       dirLight.position.set(5, 10, 5);
+       dirLight.castShadow = true;
+       dirLight.shadow.camera.top = 5;
+       dirLight.shadow.camera.bottom = -5;
+       dirLight.shadow.camera.left = -5;
+       dirLight.shadow.camera.right = 5;
+       dirLight.shadow.camera.near = 0.1;
+       dirLight.shadow.camera.far = 25;
+       dirLight.shadow.mapSize.width = 2048;
+       dirLight.shadow.mapSize.height = 2048;
+       dirLight.shadow.bias = -0.0005;
+       scene.add(dirLight);
+
+
+       // Fill light to prevent shadows from being pitch black
+       const fillLight = new THREE.DirectionalLight(0xcceeff, 0.5);
+       fillLight.position.set(-5, 3, -5);
+       scene.add(fillLight);
+
+
+       // --- ENVIRONMENT ---
+       // Grassy/dirt ground plane
+       const groundGeo = new THREE.PlaneGeometry(30, 30);
+       const groundMat = new THREE.MeshStandardMaterial({
+           color: 0x4a5d35, // Dull ground green/brown
+           roughness: 1.0,
+           metalness: 0.0
+       });
+       const ground = new THREE.Mesh(groundGeo, groundMat);
+       ground.rotation.x = -Math.PI / 2;
+       ground.receiveShadow = true;
+       scene.add(ground);
+
+
+       // --- GENERATE AND ADD DENSE ʻAʻALIʻI ---
+       console.log("Generating Procedural Dense ʻAʻaliʻi...");
+       const aaliiPlant = createDenseAalii();
+       scene.add(aaliiPlant);
+
+
+       // --- ANIMATION LOOP ---
+       function animate() {
+           requestAnimationFrame(animate);
+           controls.update();
+           renderer.render(scene, camera);
+       }
+
+
+       // Handle Window Resize
+       window.addEventListener('resize', () => {
+           camera.aspect = window.innerWidth / window.innerHeight;
+           camera.updateProjectionMatrix();
+           renderer.setSize(window.innerWidth, window.innerHeight);
+       });
+
+
+       // Start render
+       animate();
+
+
+   </script>
+</body>
+</html>
+

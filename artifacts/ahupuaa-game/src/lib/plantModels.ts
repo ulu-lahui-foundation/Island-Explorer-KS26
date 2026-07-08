@@ -163,6 +163,128 @@ export function createNaupakaBush() {
   return bushGroup;
 }
 
+// ── ʻAʻaliʻi (Dodonaea viscosa) procedural model ──
+export function createAalii() {
+  const aaliiGroup = new THREE.Group();
+  const dummy = new THREE.Object3D();
+  const colorHelper = new THREE.Color();
+
+  const maxBranchDepth = 3;
+  const trunkCount = 7;
+  const leavesPerUnit = 25;
+
+  const branchMat = new THREE.MeshStandardMaterial({ color: 0x5c544d, roughness: 0.9, metalness: 0.0 });
+  const leafMat   = new THREE.MeshStandardMaterial({ color: 0x1f5c18, roughness: 0.2, metalness: 0.05, side: THREE.DoubleSide });
+
+  type BranchData = { curve: THREE.QuadraticBezierCurve3; length: number; radius: number; depth: number };
+  const allBranches: BranchData[] = [];
+
+  function generateBranch(startPt: THREE.Vector3, dir: THREE.Vector3, length: number, radius: number, depth: number) {
+    const midPt = startPt.clone()
+      .add(dir.clone().multiplyScalar(length * 0.5))
+      .add(new THREE.Vector3(dir.x * length * 0.2, length * 0.2, dir.z * length * 0.2));
+    const endPt = startPt.clone()
+      .add(dir.clone().multiplyScalar(length))
+      .add(new THREE.Vector3(0, -length * 0.15, 0));
+
+    const curve = new THREE.QuadraticBezierCurve3(startPt, midPt, endPt);
+    allBranches.push({ curve, length, radius, depth });
+
+    const segs = Math.max(4, 10 - depth * 2);
+    aaliiGroup.add(new THREE.Mesh(new THREE.TubeGeometry(curve, segs, radius, 4, false), branchMat));
+
+    if (depth < maxBranchDepth) {
+      const numChildren = depth === 0 ? 4 : depth === 1 ? 3 : 2;
+      for (let i = 0; i < numChildren; i++) {
+        const t = 0.3 + (i / numChildren) * 0.6 + Math.random() * 0.1;
+        const spawnPt  = curve.getPointAt(t);
+        const parentTan = curve.getTangentAt(t).normalize();
+        const spreadAngle = Math.random() * Math.PI * 2;
+        const spreadOut   = 0.6 + Math.random() * 0.4;
+        const binormal = new THREE.Vector3().crossVectors(parentTan, new THREE.Vector3(0, 1, 0)).normalize();
+        if (binormal.length() < 0.1) binormal.set(1, 0, 0);
+        const normal = new THREE.Vector3().crossVectors(binormal, parentTan).normalize();
+        const childDir = parentTan.clone().multiplyScalar(1 - spreadOut)
+          .add(binormal.clone().multiplyScalar(Math.cos(spreadAngle) * spreadOut))
+          .add(normal.clone().multiplyScalar(Math.sin(spreadAngle) * spreadOut))
+          .normalize();
+        childDir.y += 0.4;
+        childDir.normalize();
+        generateBranch(spawnPt, childDir, length * (0.6 + Math.random() * 0.3), radius * 0.65, depth + 1);
+      }
+    }
+  }
+
+  for (let t = 0; t < trunkCount; t++) {
+    const angle = (t / trunkCount) * Math.PI * 2 + Math.random() * 0.5;
+    const startPos = new THREE.Vector3(Math.cos(angle) * 0.2, 0, Math.sin(angle) * 0.2);
+    const baseDir  = new THREE.Vector3(Math.cos(angle) * 0.6, 1.0, Math.sin(angle) * 0.6).normalize();
+    generateBranch(startPos, baseDir, 2.0 + Math.random() * 1.0, 0.05, 0);
+  }
+
+  // Narrow glossy leaf geometry
+  const leafLen = 0.25;
+  const leafGeo = new THREE.CylinderGeometry(0.01, 0.01, leafLen, 5, 4);
+  leafGeo.translate(0, leafLen / 2, 0);
+  const leafPos = leafGeo.attributes.position as THREE.BufferAttribute;
+  for (let i = 0; i < leafPos.count; i++) {
+    const y = leafPos.getY(i);
+    const t = y / leafLen;
+    const wp = Math.sin(t * Math.PI) * Math.pow(1 - t, 0.2);
+    const x = leafPos.getX(i) * wp * 5.0;
+    let z = leafPos.getZ(i) * 0.15;
+    z += Math.abs(x) * 0.15;
+    z -= Math.sin(t * Math.PI) * 0.02;
+    leafPos.setXYZ(i, x, y, z);
+  }
+  leafGeo.computeVertexNormals();
+
+  let totalLeaves = 0;
+  allBranches.forEach(b => { if (b.depth >= 2) totalLeaves += Math.floor(b.length * leavesPerUnit); });
+
+  const leavesInst = new THREE.InstancedMesh(leafGeo, leafMat, totalLeaves);
+  aaliiGroup.add(leavesInst);
+  let leafIdx = 0;
+
+  allBranches.forEach(branch => {
+    if (branch.depth < 2) return;
+    const num = Math.floor(branch.length * leavesPerUnit);
+    for (let i = 0; i < num && leafIdx < totalLeaves; i++) {
+      const t = Math.random();
+      const point   = branch.curve.getPointAt(t);
+      const tangent = branch.curve.getTangentAt(t).normalize();
+      const binormal = new THREE.Vector3().crossVectors(tangent, new THREE.Vector3(0, 1, 0)).normalize();
+      const normal   = new THREE.Vector3().crossVectors(binormal, tangent).normalize();
+      const angle    = i * 2.39996 + Math.random();
+      const leafOut  = new THREE.Vector3()
+        .addScaledVector(binormal, Math.cos(angle))
+        .addScaledVector(normal,   Math.sin(angle))
+        .normalize();
+      const leafDir = leafOut.clone().multiplyScalar(0.7)
+        .add(tangent.clone().multiplyScalar(0.3))
+        .add(new THREE.Vector3(0, 0.5, 0))
+        .normalize();
+      dummy.position.copy(point);
+      dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), leafDir);
+      dummy.rotateY(Math.random() * 0.6 - 0.3);
+      dummy.rotateX(Math.random() * 0.3);
+      const s = 0.7 + Math.random() * 0.5;
+      dummy.scale.set(s, s, s);
+      dummy.updateMatrix();
+      const isHighlight = Math.random() > 0.7;
+      colorHelper.setHSL(isHighlight ? 0.28 : 0.33, isHighlight ? 0.8 : 0.6, isHighlight ? 0.45 : 0.25);
+      leavesInst.setMatrixAt(leafIdx, dummy.matrix);
+      leavesInst.setColorAt(leafIdx, colorHelper);
+      leafIdx++;
+    }
+  });
+
+  leavesInst.instanceMatrix.needsUpdate = true;
+  if (leavesInst.instanceColor) leavesInst.instanceColor.needsUpdate = true;
+
+  return aaliiGroup;
+}
+
 // ── Lāʻī (Ti / Cordyline fruticosa) procedural model ──
 export function createLai() {
   const plantGroup = new THREE.Group();
@@ -1516,14 +1638,9 @@ export function buildPlantModel(plantId: string): THREE.Group {
       break;
     }
     case "aalii": {
-      const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.35, 0), plantMat);
-      bush.position.y = 0.3;
-      group.add(bush);
-      for (let i = 0; i < 6; i++) {
-        const pod = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.15, 4, 4), new THREE.MeshStandardMaterial({ color: 0x8B0000, roughness: 0.6 }));
-        pod.position.set((Math.random() - 0.5) * 0.5, 0.5 + Math.random() * 0.2, (Math.random() - 0.5) * 0.5);
-        group.add(pod);
-      }
+      const aalii = createAalii();
+      group.add(aalii);
+      group.scale.set(0.55, 0.55, 0.55);
       break;
     }
     case "ulu": {
