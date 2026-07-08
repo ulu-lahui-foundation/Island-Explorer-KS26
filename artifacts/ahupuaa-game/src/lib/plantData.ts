@@ -203,7 +203,7 @@ export const PLANT_DATA: PlantData[] = [
     name: 'Kupukupu',
     scientific: 'Nephrolepis exaltata',
     zone: 'uka',
-    image: '/plants/kupukupu.jpg',
+    image: '/kupukupu.jpg',
     description: 'A lush sword fern with long, arching fronds and dense clumps of dark green leaflets.',
     distribution: 'Found in shaded, moist forest understories and along stream banks across all main islands.',
     landscape: 'Excellent groundcover for shaded areas, hanging baskets, or naturalized understory plantings.',
