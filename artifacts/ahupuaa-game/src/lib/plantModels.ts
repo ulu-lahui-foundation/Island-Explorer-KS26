@@ -163,6 +163,142 @@ export function createNaupakaBush() {
   return bushGroup;
 }
 
+// ── Kukui (Candlenut) procedural tree ──
+export function createKukuiTree() {
+  const treeGroup = new THREE.Group();
+
+  const barkMat = new THREE.MeshStandardMaterial({ color: 0x6e665d, roughness: 0.95 });
+  const leafMatSilvery = new THREE.MeshStandardMaterial({ color: 0x9cb099, roughness: 0.6, side: THREE.DoubleSide });
+  const leafMatMature = new THREE.MeshStandardMaterial({ color: 0x6b805f, roughness: 0.4, side: THREE.DoubleSide });
+  const fruitMat = new THREE.MeshStandardMaterial({ color: 0x8a8a56, roughness: 0.8 });
+  const flowerMat = new THREE.MeshStandardMaterial({ color: 0xfdfdf0, roughness: 0.5 });
+
+  const lobeBaseGeo = new THREE.ConeGeometry(0.4, 1.5, 3);
+  lobeBaseGeo.translate(0, 0.75, 0);
+  const leafCenterBaseGeo = new THREE.SphereGeometry(0.3, 4, 3);
+  const leafStemGeo = new THREE.CylinderGeometry(0.04, 0.06, 0.8, 3);
+  leafStemGeo.translate(0, 0.4, 0);
+  const nutGeo = new THREE.SphereGeometry(0.4, 6, 5);
+  const flowerGeo = new THREE.SphereGeometry(0.15, 4, 3);
+
+  function createStem(startVec: THREE.Vector3, endVec: THREE.Vector3, radius: number) {
+    const vec = new THREE.Vector3().subVectors(endVec, startVec);
+    const length = vec.length();
+    const stemGeo = new THREE.CylinderGeometry(radius * 0.7, radius, length, 3);
+    const stemMesh = new THREE.Mesh(stemGeo, barkMat);
+    stemMesh.position.copy(startVec).add(vec.clone().multiplyScalar(0.5));
+    const up = new THREE.Vector3(0, 1, 0);
+    stemMesh.quaternion.setFromUnitVectors(up, vec.clone().normalize());
+    return stemMesh;
+  }
+
+  function createLobedLeaf(mature: boolean) {
+    const mat = mature ? leafMatMature : leafMatSilvery;
+    const leafOrigin = new THREE.Group();
+    const addLobe = (sx: number, sy: number, rz: number, py: number) => {
+      const m = new THREE.Mesh(lobeBaseGeo, mat);
+      m.scale.set(sx, sy, 0.05);
+      m.rotation.z = rz;
+      m.position.y = py;
+      leafOrigin.add(m);
+    };
+    addLobe(1.0, 1.2, 0, 0.6);
+    addLobe(0.8, 1.0, Math.PI / 4, 0.4);
+    addLobe(0.8, 1.0, -Math.PI / 4, 0.4);
+    addLobe(0.5, 0.7, Math.PI / 2.2, 0.2);
+    addLobe(0.5, 0.7, -Math.PI / 2.2, 0.2);
+    const center = new THREE.Mesh(leafCenterBaseGeo, mat);
+    center.scale.set(1, 0.8, 0.05);
+    center.position.y = 0.4;
+    leafOrigin.add(center);
+    leafOrigin.add(new THREE.Mesh(leafStemGeo, barkMat));
+    return leafOrigin;
+  }
+
+  function addFruits(parent: THREE.Group) {
+    const origin = new THREE.Vector3();
+    for (let i = 0; i < Math.floor(Math.random() * 3) + 1; i++) {
+      const pos = new THREE.Vector3(
+        (Math.random() - 0.5) * 0.8, -0.5 - Math.random() * 0.5, (Math.random() - 0.5) * 0.8
+      );
+      const nut = new THREE.Mesh(nutGeo, fruitMat);
+      nut.scale.set(1, 1.2, 1);
+      nut.position.copy(pos);
+      parent.add(nut);
+      parent.add(createStem(origin, pos, 0.04));
+    }
+  }
+
+  function addFlowers(parent: THREE.Group) {
+    const pg = new THREE.Group();
+    pg.position.y = 0.5;
+    const base = new THREE.Vector3(0, -0.5, 0);
+    const center = new THREE.Vector3(0, 0.5, 0);
+    pg.add(createStem(base, center, 0.05));
+    for (let i = 0; i < 15; i++) {
+      const fp = new THREE.Vector3(
+        (Math.random() - 0.5) * 1.5, Math.random() * 1.5, (Math.random() - 0.5) * 1.5
+      );
+      const f = new THREE.Mesh(flowerGeo, flowerMat);
+      f.position.copy(fp);
+      pg.add(f);
+      pg.add(createStem(center, fp, 0.015));
+    }
+    parent.add(pg);
+  }
+
+  function addCluster(branchParent: THREE.Object3D, branchLength: number) {
+    const cg = new THREE.Group();
+    cg.position.y = branchLength;
+    branchParent.add(cg);
+    const numLeaves = Math.floor(Math.random() * 4) + 5;
+    for (let i = 0; i < numLeaves; i++) {
+      const leaf = createLobedLeaf(Math.random() > 0.6);
+      leaf.rotation.y = (Math.PI * 2 / numLeaves) * i + Math.random() * 0.5;
+      leaf.rotation.x = Math.PI / 2 + (Math.random() * 0.8 - 0.2);
+      const s = 0.8 + Math.random() * 0.4;
+      leaf.scale.setScalar(s);
+      cg.add(leaf);
+    }
+    const r = Math.random();
+    if (r > 0.85) addFruits(cg);
+    else if (r > 0.70) addFlowers(cg);
+  }
+
+  const maxDepth = 4;
+
+  function buildBranch(parent: THREE.Object3D, radius: number, length: number, depth: number) {
+    const branchGeo = new THREE.CylinderGeometry(radius * 0.65, radius, length, 4);
+    branchGeo.translate(0, length / 2, 0);
+    parent.add(new THREE.Mesh(branchGeo, barkMat));
+
+    if (depth > 0) {
+      const numChildren = depth === maxDepth ? 6 : 3;
+      for (let i = 0; i < numChildren; i++) {
+        const cg = new THREE.Group();
+        cg.position.y = length * (0.75 + Math.random() * 0.25);
+        const tilt = 0.6 + Math.random() * 0.3;
+        const radial = (Math.PI * 2 / numChildren) * i + (Math.random() * 0.3 - 0.15);
+        cg.rotation.set(tilt, radial, 0, "YXZ");
+        cg.quaternion.slerp(new THREE.Quaternion(), 0.4);
+        parent.add(cg);
+        buildBranch(cg, radius * 0.65, length * 0.75, depth - 1);
+      }
+      if (depth <= 2) {
+        const extras = depth === 2 ? 1 : 2;
+        for (let j = 0; j < extras; j++) {
+          if (Math.random() > 0.3) addCluster(parent, length * (0.3 + Math.random() * 0.6));
+        }
+      }
+    } else {
+      addCluster(parent, length);
+    }
+  }
+
+  buildBranch(treeGroup, 1.3, 7.0, maxDepth);
+  return treeGroup;
+}
+
 // ── Kupukupu procedural fern ──
 export function createKupukupuFern() {
   const fernGroup = new THREE.Group();
@@ -466,12 +602,9 @@ export function buildPlantModel(plantId: string): THREE.Group {
       break;
     }
     case "kukui": {
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.5, 6), trunkMat);
-      trunk.position.y = 0.75;
-      group.add(trunk);
-      const canopy = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8, 1), plantMat);
-      canopy.position.y = 1.6;
-      group.add(canopy);
+      const kukui = createKukuiTree();
+      group.add(kukui);
+      group.scale.set(0.6, 0.6, 0.6);
       break;
     }
     case "ohia": {

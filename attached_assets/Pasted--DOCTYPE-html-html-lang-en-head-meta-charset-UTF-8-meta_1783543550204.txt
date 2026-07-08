@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Procedural Hawaiian Kukui Tree</title>
+   <style>
+       body {
+           margin: 0;
+           overflow: hidden;
+           background-color: #87CEEB; /* Sky blue to contrast silvery leaves */
+           font-family: sans-serif;
+       }
+       #info {
+           position: absolute;
+           top: 10px;
+           left: 10px;
+           background: rgba(0, 0, 0, 0.6);
+           color: white;
+           padding: 10px 15px;
+           border-radius: 8px;
+           pointer-events: none;
+           max-width: 350px;
+           line-height: 1.4;
+       }
+       h1 { margin: 0 0 5px 0; font-size: 1.2rem; }
+       p { margin: 0; font-size: 0.9rem; color: #ccc; }
+   </style>
+   <!-- Import map for Three.js -->
+   <script type="importmap">
+       {
+           "imports": {
+               "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+               "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+           }
+       }
+   </script>
+</head>
+<body>
+   <div id="info">
+       <h1>Hawaiian Kukui Tree Generator</h1>
+       <p>Aleurites moluccanus (Candlenut)</p>
+       <p>Notice the procedural 3-lobed leaves, pale silvery-green foliage, and terminal clusters of nuts and creamy flowers.</p>
+       <p style="margin-top: 8px; color: #fff;"><i>Left Click: Rotate | Scroll: Zoom | Right Click: Pan</i></p>
+   </div>
+
+
+   <script type="module">
+       import * as THREE from 'three';
+       import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+       import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+
+
+       // ==========================================
+       // SCENE SETUP
+       // ==========================================
+       const scene = new THREE.Scene();
+       scene.fog = new THREE.FogExp2(0x87CEEB, 0.015);
+
+
+       const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+       camera.position.set(0, 15, 30);
+
+
+       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+       renderer.setSize(window.innerWidth, window.innerHeight);
+       renderer.shadowMap.enabled = true;
+       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+       document.body.appendChild(renderer.domElement);
+
+
+       const controls = new OrbitControls(camera, renderer.domElement);
+       controls.target.set(0, 10, 0);
+       controls.update();
+
+
+       // Lighting
+       const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+       hemiLight.position.set(0, 50, 0);
+       scene.add(hemiLight);
+
+
+       const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+       dirLight.position.set(20, 40, 20);
+       dirLight.castShadow = true;
+       dirLight.shadow.mapSize.width = 2048;
+       dirLight.shadow.mapSize.height = 2048;
+       dirLight.shadow.camera.near = 0.5;
+       dirLight.shadow.camera.far = 100;
+       dirLight.shadow.camera.left = -20;
+       dirLight.shadow.camera.right = 20;
+       dirLight.shadow.camera.top = 20;
+       dirLight.shadow.camera.bottom = -20;
+       dirLight.shadow.bias = -0.001;
+       scene.add(dirLight);
+
+
+       // Ground Plane
+       const groundGeo = new THREE.PlaneGeometry(100, 100);
+       const groundMat = new THREE.MeshStandardMaterial({ color: 0x3b522b, roughness: 1.0 });
+       const ground = new THREE.Mesh(groundGeo, groundMat);
+       ground.rotation.x = -Math.PI / 2;
+       ground.receiveShadow = true;
+       scene.add(ground);
+
+
+       // ==========================================
+       // PROCEDURAL KUKUI TREE GENERATOR
+       // ==========================================
+      
+       function createKukuiTree() {
+           // We use a dummy group to calculate all the complex mathematical positions
+           // but we WON'T render this group. We'll extract the geometry from it.
+           const dummyTreeGroup = new THREE.Group();
+
+
+           // Materials
+           const barkMat = new THREE.MeshStandardMaterial({ color: 0x6e665d, roughness: 0.95, bumpScale: 0.05 });
+           const leafMatSilvery = new THREE.MeshStandardMaterial({ color: 0x9cb099, roughness: 0.6, side: THREE.DoubleSide });
+           const leafMatMature = new THREE.MeshStandardMaterial({ color: 0x6b805f, roughness: 0.4, side: THREE.DoubleSide });
+           const fruitMat = new THREE.MeshStandardMaterial({ color: 0x8a8a56, roughness: 0.8 });
+           const flowerMat = new THREE.MeshStandardMaterial({ color: 0xfdfdf0, roughness: 0.5 });
+
+
+           // Reusable Geometries - OPTIMIZATION: Drastically lowered segments to reduce poly count
+           const leafBaseGeo = new THREE.SphereGeometry(1, 4, 3);
+           const nutGeo = new THREE.SphereGeometry(0.4, 6, 5);
+           const flowerGeo = new THREE.SphereGeometry(0.15, 4, 3);
+          
+           // Reusable leaf geometries
+           const lobeBaseGeo = new THREE.ConeGeometry(0.4, 1.5, 3); // 3 sides = pyramid (super low poly)
+           lobeBaseGeo.translate(0, 0.75, 0);
+           const leafCenterBaseGeo = new THREE.SphereGeometry(0.3, 4, 3);
+           const leafStemGeo = new THREE.CylinderGeometry(0.04, 0.06, 0.8, 3);
+           leafStemGeo.translate(0, 0.4, 0);
+
+
+           // Helper function to create procedural connecting stems
+           function createStem(startVec, endVec, radius) {
+               const vec = new THREE.Vector3().subVectors(endVec, startVec);
+               const length = vec.length();
+               const stemGeo = new THREE.CylinderGeometry(radius * 0.7, radius, length, 3);
+              
+               const stemMesh = new THREE.Mesh(stemGeo);
+               stemMesh.userData.type = 'bark'; // Tag to merge with branch geometry
+              
+               // Position at midpoint
+               stemMesh.position.copy(startVec).add(vec.clone().multiplyScalar(0.5));
+              
+               // Orient towards the target
+               const up = new THREE.Vector3(0, 1, 0);
+               const quaternion = new THREE.Quaternion().setFromUnitVectors(up, vec.clone().normalize());
+               stemMesh.quaternion.copy(quaternion);
+              
+               return stemMesh;
+           }
+
+
+           // --- Generation Parameters ---
+           const maxDepth = 4;
+           const initialRadius = 1.3;
+           const initialLength = 7.0;
+
+
+           // --- Recursive Branch Builder ---
+           function buildBranch(parent, radius, length, depth) {
+               // OPTIMIZATION: 4 segments is enough for a branch
+               const branchGeo = new THREE.CylinderGeometry(radius * 0.65, radius, length, 4);
+               branchGeo.translate(0, length / 2, 0);
+              
+               const branchMesh = new THREE.Mesh(branchGeo);
+               branchMesh.userData.type = 'bark'; // Tag for merging later
+               parent.add(branchMesh);
+
+
+               if (depth > 0) {
+                   const numChildren = depth === maxDepth ? 6 : 3;
+                  
+                   for (let i = 0; i < numChildren; i++) {
+                       const childGroup = new THREE.Group();
+                      
+                       childGroup.position.y = length * (0.75 + Math.random() * 0.25);
+                       const tiltAngle = 0.6 + Math.random() * 0.3;
+                       const radialAngle = (Math.PI * 2 / numChildren) * i + (Math.random() * 0.3 - 0.15);
+                      
+                       childGroup.rotation.set(tiltAngle, radialAngle, 0, 'YXZ');
+
+
+                       const upQuat = new THREE.Quaternion();
+                       childGroup.quaternion.slerp(upQuat, 0.4);
+
+
+                       parent.add(childGroup);
+                       buildBranch(childGroup, radius * 0.65, length * 0.75, depth - 1);
+                   }
+                  
+                   // Add lateral leaf clusters to fill empty gaps along the lower branches
+                   if (depth <= 2) {
+                       const numExtras = depth === 2 ? 1 : 2;
+                       for (let j = 0; j < numExtras; j++) {
+                           if (Math.random() > 0.3) {
+                               addTerminalClusters(parent, length * (0.3 + Math.random() * 0.6));
+                           }
+                       }
+                   }
+               } else {
+                   addTerminalClusters(parent, length);
+               }
+           }
+
+
+           // --- Foliage and Cluster Construction ---
+           function addTerminalClusters(branchParent, branchLength) {
+               const clusterGroup = new THREE.Group();
+               clusterGroup.position.y = branchLength;
+               branchParent.add(clusterGroup);
+
+
+               const numLeaves = Math.floor(Math.random() * 4) + 5;
+               for (let i = 0; i < numLeaves; i++) {
+                   const isYoung = Math.random() > 0.6;
+                   const leafType = isYoung ? 'silvery' : 'mature';
+                   const leaf = createLobedLeaf(leafType);
+                  
+                   leaf.rotation.y = (Math.PI * 2 / numLeaves) * i + (Math.random() * 0.5);
+                   leaf.rotation.x = Math.PI / 2 + (Math.random() * 0.8 - 0.2);
+                  
+                   const scale = 0.8 + Math.random() * 0.4;
+                   leaf.scale.set(scale, scale, scale);
+                  
+                   clusterGroup.add(leaf);
+               }
+
+
+               const featureRand = Math.random();
+               if (featureRand > 0.85) {
+                   addFruits(clusterGroup);
+               } else if (featureRand > 0.70) {
+                   addFlowers(clusterGroup);
+               }
+           }
+
+
+           // Constructs leaf layout logically (no materials applied yet)
+           function createLobedLeaf(matType) {
+               const leafOrigin = new THREE.Group();
+
+
+               const mainLobe = new THREE.Mesh(lobeBaseGeo);
+               mainLobe.scale.set(1.0, 1.2, 0.05);
+               mainLobe.position.y = 0.6;
+               mainLobe.userData.type = matType;
+               leafOrigin.add(mainLobe);
+
+
+               const leftLobe = new THREE.Mesh(lobeBaseGeo);
+               leftLobe.scale.set(0.8, 1.0, 0.05);
+               leftLobe.rotation.z = Math.PI / 4;
+               leftLobe.position.y = 0.4;
+               leftLobe.userData.type = matType;
+               leafOrigin.add(leftLobe);
+
+
+               const rightLobe = new THREE.Mesh(lobeBaseGeo);
+               rightLobe.scale.set(0.8, 1.0, 0.05);
+               rightLobe.rotation.z = -Math.PI / 4;
+               rightLobe.position.y = 0.4;
+               rightLobe.userData.type = matType;
+               leafOrigin.add(rightLobe);
+
+
+               const botLeftLobe = new THREE.Mesh(lobeBaseGeo);
+               botLeftLobe.scale.set(0.5, 0.7, 0.05);
+               botLeftLobe.rotation.z = Math.PI / 2.2;
+               botLeftLobe.position.y = 0.2;
+               botLeftLobe.userData.type = matType;
+               leafOrigin.add(botLeftLobe);
+
+
+               const botRightLobe = new THREE.Mesh(lobeBaseGeo);
+               botRightLobe.scale.set(0.5, 0.7, 0.05);
+               botRightLobe.rotation.z = -Math.PI / 2.2;
+               botRightLobe.position.y = 0.2;
+               botRightLobe.userData.type = matType;
+               leafOrigin.add(botRightLobe);
+              
+               const leafBase = new THREE.Mesh(leafCenterBaseGeo);
+               leafBase.scale.set(1, 0.8, 0.05);
+               leafBase.position.y = 0.4;
+               leafBase.userData.type = matType;
+               leafOrigin.add(leafBase);
+
+
+               const stem = new THREE.Mesh(leafStemGeo);
+               stem.userData.type = 'bark';
+               leafOrigin.add(stem);
+
+
+               return leafOrigin;
+           }
+
+
+           function addFruits(parentGroup) {
+               const numFruits = Math.floor(Math.random() * 3) + 1;
+               const originPos = new THREE.Vector3(0, 0, 0);
+
+
+               for (let i = 0; i < numFruits; i++) {
+                   const nutPos = new THREE.Vector3(
+                       (Math.random() - 0.5) * 0.8,
+                       -0.5 - Math.random() * 0.5,
+                       (Math.random() - 0.5) * 0.8
+                   );
+                  
+                   const nut = new THREE.Mesh(nutGeo);
+                   nut.scale.set(1, 1.2, 1);
+                   nut.position.copy(nutPos);
+                   nut.userData.type = 'fruit';
+                   parentGroup.add(nut);
+
+
+                   // Add a tiny branch stem to connect the floating nut to the tree
+                   const stem = createStem(originPos, nutPos, 0.04);
+                   parentGroup.add(stem);
+               }
+           }
+
+
+           function addFlowers(parentGroup) {
+               const panicleGroup = new THREE.Group();
+               panicleGroup.position.y = 0.5;
+              
+               const panicleOrigin = new THREE.Vector3(0, -0.5, 0); // Base of the cluster
+               const panicleCenter = new THREE.Vector3(0, 0.5, 0);  // Center point of the burst
+
+
+               // Connect the whole flower cluster to the main branch
+               const mainStalk = createStem(panicleOrigin, panicleCenter, 0.05);
+               panicleGroup.add(mainStalk);
+
+
+               for (let i = 0; i < 15; i++) {
+                   const flowerPos = new THREE.Vector3(
+                       (Math.random() - 0.5) * 1.5,
+                       Math.random() * 1.5,
+                       (Math.random() - 0.5) * 1.5
+                   );
+
+
+                   const flower = new THREE.Mesh(flowerGeo);
+                   flower.position.copy(flowerPos);
+                   flower.userData.type = 'flower';
+                   panicleGroup.add(flower);
+
+
+                   // Connect each individual flower to the center of the panicle
+                   const stem = createStem(panicleCenter, flowerPos, 0.015);
+                   panicleGroup.add(stem);
+               }
+               parentGroup.add(panicleGroup);
+           }
+
+
+           // Build mathematical structure
+           buildBranch(dummyTreeGroup, initialRadius, initialLength, maxDepth);
+
+
+           // ==========================================
+           // OPTIMIZATION: BAKE GEOMETRY TO REDUCE DRAW CALLS
+           // ==========================================
+           dummyTreeGroup.updateMatrixWorld(true);
+
+
+           // Sorting buckets for cloned geometries
+           const geos = { bark: [], silvery: [], mature: [], fruit: [], flower: [] };
+
+
+           // Traverse the dummy tree and bake world positions into raw geometries
+           dummyTreeGroup.traverse((child) => {
+               if (child.isMesh && child.userData.type) {
+                   const geom = child.geometry.clone();
+                   geom.applyMatrix4(child.matrixWorld);
+                   geos[child.userData.type].push(geom);
+               }
+           });
+
+
+           // The final optimal rendering group
+           const finalTreeGroup = new THREE.Group();
+
+
+           // Merge everything by material type and add to scene
+           if (geos.bark.length > 0) {
+               const mergedBark = BufferGeometryUtils.mergeGeometries(geos.bark, false);
+               const meshBark = new THREE.Mesh(mergedBark, barkMat);
+               meshBark.castShadow = true;
+               meshBark.receiveShadow = true;
+               finalTreeGroup.add(meshBark);
+           }
+           if (geos.silvery.length > 0) {
+               const mergedSilvery = BufferGeometryUtils.mergeGeometries(geos.silvery, false);
+               const meshSilvery = new THREE.Mesh(mergedSilvery, leafMatSilvery);
+               meshSilvery.castShadow = false; // Disable leaf shadows for massive performance boost
+               finalTreeGroup.add(meshSilvery);
+           }
+           if (geos.mature.length > 0) {
+               const mergedMature = BufferGeometryUtils.mergeGeometries(geos.mature, false);
+               const meshMature = new THREE.Mesh(mergedMature, leafMatMature);
+               meshMature.castShadow = false;
+               finalTreeGroup.add(meshMature);
+           }
+           if (geos.fruit.length > 0) {
+               const mergedFruit = BufferGeometryUtils.mergeGeometries(geos.fruit, false);
+               const meshFruit = new THREE.Mesh(mergedFruit, fruitMat);
+               meshFruit.castShadow = true;
+               finalTreeGroup.add(meshFruit);
+           }
+           if (geos.flower.length > 0) {
+               const mergedFlower = BufferGeometryUtils.mergeGeometries(geos.flower, false);
+               const meshFlower = new THREE.Mesh(mergedFlower, flowerMat);
+               finalTreeGroup.add(meshFlower);
+           }
+
+
+           return finalTreeGroup;
+       }
+
+
+       // Generate the tree and add to scene
+       const kukuiTree = createKukuiTree();
+       scene.add(kukuiTree);
+
+
+       // ==========================================
+       // ANIMATION LOOP
+       // ==========================================
+       function animate() {
+           requestAnimationFrame(animate);
+           controls.update();
+           renderer.render(scene, camera);
+       }
+
+
+       // Handle window resize
+       window.addEventListener('resize', () => {
+           camera.aspect = window.innerWidth / window.innerHeight;
+           camera.updateProjectionMatrix();
+           renderer.setSize(window.innerWidth, window.innerHeight);
+       });
+
+
+       animate();
+   </script>
+</body>
+</html>
+
