@@ -163,6 +163,108 @@ export function createNaupakaBush() {
   return bushGroup;
 }
 
+// ── ʻUlu (Breadfruit) procedural tree ──
+export function createUluTree() {
+  const treeGroup = new THREE.Group();
+
+  const barkMat = new THREE.MeshStandardMaterial({ color: 0x6b6357, roughness: 0.85 });
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x183b1a, roughness: 0.25, metalness: 0.05, side: THREE.DoubleSide });
+  const fruitMat = new THREE.MeshStandardMaterial({ color: 0x8fb359, roughness: 0.7 });
+
+  const baseLeafGeo = new THREE.SphereGeometry(1, 8, 8);
+  const stemGeo = new THREE.CylinderGeometry(0.04, 0.06, 3, 5);
+  stemGeo.translate(0, 1.5, 0);
+  const fruitBumpGeo = new THREE.SphereGeometry(0.12, 6, 6);
+
+  function addLeaves(branch: THREE.Group, branchLen: number) {
+    const numLeaves = 6 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < numLeaves; i++) {
+      const leafGrp = new THREE.Group();
+      leafGrp.add(new THREE.Mesh(stemGeo, leafMat));
+
+      const addLobe = (y: number, xOff: number, sX: number, sY: number, rotZ: number) => {
+        const lobe = new THREE.Mesh(baseLeafGeo, leafMat);
+        lobe.position.set(xOff, y, 0);
+        lobe.scale.set(sX, sY, 0.08);
+        lobe.rotation.z = rotZ;
+        leafGrp.add(lobe);
+      };
+      addLobe(2.8,  0,    0.6, 0.9, 0);
+      addLobe(2.2,  0.5,  0.5, 0.8, -Math.PI / 4);
+      addLobe(2.2, -0.5,  0.5, 0.8,  Math.PI / 4);
+      addLobe(1.5,  0.7,  0.6, 0.9, -Math.PI / 3.5);
+      addLobe(1.5, -0.7,  0.6, 0.9,  Math.PI / 3.5);
+      addLobe(0.8,  0.5,  0.5, 0.7, -Math.PI / 2.5);
+      addLobe(0.8, -0.5,  0.5, 0.7,  Math.PI / 2.5);
+
+      leafGrp.position.y = branchLen - Math.random() * 1.0;
+      leafGrp.rotation.y = (Math.PI * 2 / numLeaves) * i + Math.random() * 0.3;
+      leafGrp.rotation.z = Math.PI / 3 + Math.random() * 0.3;
+      leafGrp.rotation.x = Math.random() * 0.2 - 0.1;
+      const s = 0.8 + Math.random() * 0.4;
+      leafGrp.scale.setScalar(s);
+      branch.add(leafGrp);
+    }
+  }
+
+  function addFruit(branch: THREE.Group, branchLen: number) {
+    const fruitGrp = new THREE.Group();
+    const coreRadius = 0.6;
+    fruitGrp.add(new THREE.Mesh(new THREE.SphereGeometry(coreRadius, 10, 10), fruitMat));
+
+    const numBumps = 80;
+    const phi = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < numBumps; i++) {
+      const y = 1 - (i / (numBumps - 1)) * 2;
+      const r = Math.sqrt(1 - y * y);
+      const theta = phi * i;
+      const bump = new THREE.Mesh(fruitBumpGeo, fruitMat);
+      bump.position.set(Math.cos(theta) * r * coreRadius * 0.95, y * coreRadius * 0.95, Math.sin(theta) * r * coreRadius * 0.95);
+      bump.scale.set(1, 1, 0.4);
+      fruitGrp.add(bump);
+    }
+
+    const fruitStemGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.8);
+    fruitStemGeo.translate(0, 0.4, 0);
+    fruitGrp.add(new THREE.Mesh(fruitStemGeo, barkMat));
+    fruitGrp.position.y = branchLen - 0.5 - Math.random();
+    fruitGrp.rotation.z = -Math.PI / 4;
+    branch.add(fruitGrp);
+  }
+
+  function buildBranch(
+    parentGroup: THREE.Object3D, depth: number, maxDepth: number,
+    length: number, startR: number, endR: number, angleY: number, angleZ: number
+  ) {
+    const branchGroup = new THREE.Group();
+    const branchGeo = new THREE.CylinderGeometry(endR, startR, length, 7);
+    branchGeo.translate(0, length / 2, 0);
+    branchGroup.add(new THREE.Mesh(branchGeo, barkMat));
+    branchGroup.rotation.y = angleY;
+    branchGroup.rotation.z = angleZ;
+    parentGroup.add(branchGroup);
+
+    if (depth < maxDepth) {
+      const numChildren = depth === 0 ? 4 : (Math.random() > 0.4 ? 3 : 2);
+      for (let i = 0; i < numChildren; i++) {
+        const childAngleY = (Math.PI * 2 / numChildren) * i + (Math.random() * 0.4 - 0.2);
+        const childAngleZ = Math.PI / 4 + Math.random() * 0.2;
+        const childLength = length * (0.6 + Math.random() * 0.15);
+        const childBase = new THREE.Group();
+        childBase.position.y = length * (0.8 + Math.random() * 0.2);
+        branchGroup.add(childBase);
+        buildBranch(childBase, depth + 1, maxDepth, childLength, endR, endR * 0.6, childAngleY, childAngleZ);
+      }
+    } else {
+      addLeaves(branchGroup as THREE.Group, length);
+      if (Math.random() > 0.4) addFruit(branchGroup as THREE.Group, length);
+    }
+  }
+
+  buildBranch(treeGroup, 0, 3, 9, 0.8, 0.5, 0, 0);
+  return treeGroup;
+}
+
 // ── Kukui (Candlenut) procedural tree ──
 export function createKukuiTree() {
   const treeGroup = new THREE.Group();
@@ -680,17 +782,9 @@ export function buildPlantModel(plantId: string): THREE.Group {
       break;
     }
     case "ulu": {
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 1.8, 6), trunkMat);
-      trunk.position.y = 0.9;
-      group.add(trunk);
-      const canopy = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 1), plantMat);
-      canopy.position.y = 2.2;
-      group.add(canopy);
-      for (let i = 0; i < 3; i++) {
-        const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 6), new THREE.MeshStandardMaterial({ color: 0x8BC34A, roughness: 0.6 }));
-        fruit.position.set((Math.random() - 0.5) * 0.8, 2 + Math.random() * 0.3, (Math.random() - 0.5) * 0.8);
-        group.add(fruit);
-      }
+      const ulu = createUluTree();
+      group.add(ulu);
+      group.scale.set(0.55, 0.55, 0.55);
       break;
     }
     case "lai": {

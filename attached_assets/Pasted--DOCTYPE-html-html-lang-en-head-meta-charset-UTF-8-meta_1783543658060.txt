@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Procedural Hawaiian 'Ulu Tree</title>
+   <style>
+       body {
+           margin: 0;
+           padding: 0;
+           overflow: hidden;
+           background-color: #87CEEB; /* Sky blue background */
+           font-family: sans-serif;
+       }
+       #info {
+           position: absolute;
+           top: 10px;
+           left: 10px;
+           color: white;
+           text-shadow: 1px 1px 2px black;
+           pointer-events: none;
+           z-index: 100;
+       }
+       canvas {
+           display: block;
+       }
+   </style>
+   <!-- Import Three.js and OrbitControls -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+   <div id="info">
+       <h2>Hawaiian 'Ulu (Breadfruit) Tree</h2>
+       <p>Procedurally generated using clustered simple geometries.</p>
+       <p>Left Click + Drag: Rotate | Scroll: Zoom</p>
+   </div>
+
+
+   <script>
+       // ==========================================
+       // 1. SCENE SETUP
+       // ==========================================
+       const scene = new THREE.Scene();
+       scene.fog = new THREE.Fog(0x87CEEB, 20, 80);
+
+
+       const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+       camera.position.set(0, 15, 30);
+
+
+       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+       renderer.setSize(window.innerWidth, window.innerHeight);
+       renderer.shadowMap.enabled = true;
+       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+       renderer.toneMapping = THREE.ACESFilmicToneMapping;
+       renderer.toneMappingExposure = 1.0;
+       document.body.appendChild(renderer.domElement);
+
+
+       const controls = new THREE.OrbitControls(camera, renderer.domElement);
+       controls.enableDamping = true;
+       controls.dampingFactor = 0.05;
+       controls.target.set(0, 8, 0); // Focus on the canopy
+
+
+       // ==========================================
+       // 2. LIGHTING
+       // ==========================================
+       const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+       scene.add(ambientLight);
+
+
+       const sunLight = new THREE.DirectionalLight(0xfff5e6, 1.2);
+       sunLight.position.set(15, 25, 10);
+       sunLight.castShadow = true;
+       sunLight.shadow.mapSize.width = 2048;
+       sunLight.shadow.mapSize.height = 2048;
+       sunLight.shadow.camera.near = 0.5;
+       sunLight.shadow.camera.far = 50;
+       sunLight.shadow.camera.left = -15;
+       sunLight.shadow.camera.right = 15;
+       sunLight.shadow.camera.top = 15;
+       sunLight.shadow.camera.bottom = -15;
+       scene.add(sunLight);
+
+
+       const fillLight = new THREE.DirectionalLight(0x88bbff, 0.4);
+       fillLight.position.set(-15, 10, -10);
+       scene.add(fillLight);
+
+
+       // ==========================================
+       // 3. ENVIRONMENT (Ground)
+       // ==========================================
+       const groundGeo = new THREE.PlaneGeometry(100, 100);
+       const groundMat = new THREE.MeshStandardMaterial({
+           color: 0x3d4c28,
+           roughness: 1.0,
+           metalness: 0.0
+       });
+       const ground = new THREE.Mesh(groundGeo, groundMat);
+       ground.rotation.x = -Math.PI / 2;
+       ground.receiveShadow = true;
+       scene.add(ground);
+
+
+       // ==========================================
+       // 4. PROCEDURAL 'ULU TREE GENERATOR
+       // ==========================================
+       function createUluTree() {
+           const treeGroup = new THREE.Group();
+
+
+           // Materials (Using MeshStandardMaterial with natural parameters)
+           // Bark: Sturdy, smooth but slightly muted grayish-brown
+           const barkMat = new THREE.MeshStandardMaterial({
+               color: 0x6b6357,
+               roughness: 0.85,
+               metalness: 0.0
+           });
+          
+           // Leaves: Glossy dark green on top
+           const leafMat = new THREE.MeshStandardMaterial({
+               color: 0x183b1a,
+               roughness: 0.25, // Glossy
+               metalness: 0.05,
+               side: THREE.DoubleSide
+           });
+          
+           // Fruit: Pale green, moderate roughness
+           const fruitMat = new THREE.MeshStandardMaterial({
+               color: 0x8fb359,
+               roughness: 0.7,
+               metalness: 0.0
+           });
+
+
+           // Reusable Geometries to save memory where identical shapes are used
+           const baseLeafGeo = new THREE.SphereGeometry(1, 12, 12); // Used to cluster into a lobe
+           const stemGeo = new THREE.CylinderGeometry(0.04, 0.06, 3, 5);
+           stemGeo.translate(0, 1.5, 0); // Pivot at base
+           const fruitBumpGeo = new THREE.SphereGeometry(0.12, 8, 8);
+
+
+           // --- Recursive Branching Function ---
+           function buildBranch(parentGroup, depth, maxDepth, length, startR, endR, angleY, angleZ) {
+               const branchGroup = new THREE.Group();
+
+
+               // 1. Create the cylindrical branch segment
+               const branchGeo = new THREE.CylinderGeometry(endR, startR, length, 8);
+               branchGeo.translate(0, length / 2, 0); // Pivot at the bottom
+               const branchMesh = new THREE.Mesh(branchGeo, barkMat);
+               branchMesh.castShadow = true;
+               branchMesh.receiveShadow = true;
+               branchGroup.add(branchMesh);
+
+
+               // 2. Orient the branch relative to its parent
+               branchGroup.rotation.y = angleY;
+               branchGroup.rotation.z = angleZ;
+               parentGroup.add(branchGroup);
+
+
+               // 3. Recurse to create sub-branches
+               if (depth < maxDepth) {
+                   // Spreading canopy: More branches at the first split, fewer later
+                   const numChildren = depth === 0 ? 4 : (Math.random() > 0.4 ? 3 : 2);
+                  
+                   for (let i = 0; i < numChildren; i++) {
+                       const childAngleY = (Math.PI * 2 / numChildren) * i + (Math.random() * 0.4 - 0.2);
+                       // The higher the depth, the more they spread outward horizontally
+                       const childAngleZ = Math.PI / 4 + (Math.random() * 0.2);
+                       const childLength = length * (0.6 + Math.random() * 0.15);
+                       const childStartR = endR;
+                       const childEndR = endR * 0.6;
+
+
+                       const childBase = new THREE.Group();
+                       // Attach sub-branches slightly below the tip of the current branch
+                       childBase.position.y = length * (0.8 + Math.random() * 0.2);
+                       branchGroup.add(childBase);
+
+
+                       buildBranch(childBase, depth + 1, maxDepth, childLength, childStartR, childEndR, childAngleY, childAngleZ);
+                   }
+               } else {
+                   // Terminal branch ends: Add the massive leaves and fruits
+                   addLeaves(branchGroup, length, leafMat, baseLeafGeo, stemGeo);
+                  
+                   // Fruits cluster near the canopy extremities on older branches
+                   if (Math.random() > 0.4) {
+                       addFruit(branchGroup, length, fruitMat, fruitBumpGeo);
+                   }
+               }
+           }
+
+
+           // --- Procedural Leaf Generator ---
+           // Builds a complex, deeply lobed leaf by clustering flattened spheres
+           function addLeaves(branch, branchLen, mat, lobeGeo, stmGeo) {
+               const numLeaves = 6 + Math.floor(Math.random() * 4); // Clustered terminal leaves
+              
+               for (let i = 0; i < numLeaves; i++) {
+                   const leafGrp = new THREE.Group();
+                  
+                   // Central stem/midrib
+                   const stem = new THREE.Mesh(stmGeo, mat);
+                   stem.castShadow = true;
+                   leafGrp.add(stem);
+
+
+                   // Helper to add a flattened lobe
+                   const addLobe = (y, xOff, sX, sY, rotZ) => {
+                       const lobe = new THREE.Mesh(lobeGeo, mat);
+                       lobe.position.set(xOff, y, 0);
+                       // Flatten Z significantly to make it a leaf layer, scale X/Y to shape
+                       lobe.scale.set(sX, sY, 0.08);
+                       lobe.rotation.z = rotZ;
+                       lobe.castShadow = true;
+                       lobe.receiveShadow = true;
+                       leafGrp.add(lobe);
+                   };
+
+
+                   // Procedurally map the deep lobes characteristic of the 'Ulu
+                   addLobe(2.8, 0, 0.6, 0.9, 0); // Top central point
+                   // Upper lobes
+                   addLobe(2.2, 0.5, 0.5, 0.8, -Math.PI / 4);
+                   addLobe(2.2, -0.5, 0.5, 0.8, Math.PI / 4);
+                   // Mid lobes (Widest)
+                   addLobe(1.5, 0.7, 0.6, 0.9, -Math.PI / 3.5);
+                   addLobe(1.5, -0.7, 0.6, 0.9, Math.PI / 3.5);
+                   // Bottom lobes
+                   addLobe(0.8, 0.5, 0.5, 0.7, -Math.PI / 2.5);
+                   addLobe(0.8, -0.5, 0.5, 0.7, Math.PI / 2.5);
+
+
+                   // Position leaf cluster near branch tip
+                   leafGrp.position.y = branchLen - (Math.random() * 1.0);
+
+
+                   // Fan leaves outward in a rosette pattern
+                   leafGrp.rotation.y = (Math.PI * 2 / numLeaves) * i + Math.random() * 0.3;
+                   leafGrp.rotation.z = Math.PI / 3 + Math.random() * 0.3; // Droop outward
+                   leafGrp.rotation.x = Math.random() * 0.2 - 0.1; // Slight twist
+                  
+                   const scale = 0.8 + Math.random() * 0.4; // Varied leaf sizes
+                   leafGrp.scale.set(scale, scale, scale);
+
+
+                   branch.add(leafGrp);
+               }
+           }
+
+
+           // --- Procedural Fruit Generator ---
+           // Builds a bumpy breadfruit using Fibonacci sphere distribution for bumps
+           function addFruit(branch, branchLen, mat, bmpGeo) {
+               const fruitGrp = new THREE.Group();
+               const coreRadius = 0.6;
+              
+               // Base structure (hidden slightly underneath the bumps)
+               const coreGeo = new THREE.SphereGeometry(coreRadius, 16, 16);
+               const core = new THREE.Mesh(coreGeo, mat);
+               core.castShadow = true;
+               fruitGrp.add(core);
+
+
+               // Distribute small spheres to create the hex-like bumpy rind pattern
+               const numBumps = 120;
+               const phi = Math.PI * (3 - Math.sqrt(5)); // Golden angle
+
+
+               for (let i = 0; i < numBumps; i++) {
+                   const y = 1 - (i / (numBumps - 1)) * 2; // -1 to 1
+                   const radius = Math.sqrt(1 - y * y);
+                   const theta = phi * i;
+
+
+                   const x = Math.cos(theta) * radius;
+                   const z = Math.sin(theta) * radius;
+
+
+                   const bump = new THREE.Mesh(bmpGeo, mat);
+                   // Place tightly packed on the surface
+                   bump.position.set(x * coreRadius * 0.95, y * coreRadius * 0.95, z * coreRadius * 0.95);
+                   bump.lookAt(0, 0, 0); // Align to center
+                   bump.scale.set(1, 1, 0.4); // Flatten outwards to look like a surface nodule
+                   bump.castShadow = true;
+                   fruitGrp.add(bump);
+               }
+
+
+               // Add a small stem holding the fruit
+               const fruitStemGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.8);
+               fruitStemGeo.translate(0, 0.4, 0);
+               const fruitStem = new THREE.Mesh(fruitStemGeo, barkMat);
+               fruitStem.position.y = coreRadius * 0.8;
+               fruitGrp.add(fruitStem);
+
+
+               // Position the fruit hanging downward from the branch
+               fruitGrp.position.y = branchLen - 0.5 - Math.random();
+               // Ensure it hangs relatively straight down regardless of branch angle
+               // By applying a counter rotation in world space after being added.
+               // (Using a simple hack: just applying an inverse Z rotation roughly works for this structure)
+               fruitGrp.rotation.z = -Math.PI / 4;
+              
+               branch.add(fruitGrp);
+           }
+
+
+           // Initiate the procedural generation
+           // Args: Parent, Current Depth, Max Depth, Length, Base Radius, Tip Radius, AngleY, AngleZ
+           buildBranch(treeGroup, 0, 3, 9, 0.8, 0.5, 0, 0);
+
+
+           return treeGroup;
+       }
+
+
+       // Generate the plant and add it to the scene
+       const uluTree = createUluTree();
+       scene.add(uluTree);
+
+
+
+
+       // ==========================================
+       // 5. ANIMATION & RENDER LOOP
+       // ==========================================
+       function animate() {
+           requestAnimationFrame(animate);
+           controls.update(); // Required for damping
+          
+           // Slow, subtle rotation for presentation
+           uluTree.rotation.y += 0.001;
+
+
+           renderer.render(scene, camera);
+       }
+
+
+       // Handle window resizing
+       window.addEventListener('resize', () => {
+           camera.aspect = window.innerWidth / window.innerHeight;
+           camera.updateProjectionMatrix();
+           renderer.setSize(window.innerWidth, window.innerHeight);
+       });
+
+
+       // Start animation
+       animate();
+   </script>
+</body>
+</html>
+
