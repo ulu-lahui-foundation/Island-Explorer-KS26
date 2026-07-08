@@ -1258,11 +1258,9 @@ export function MapPage() {
           cam.position.lerp(desiredCamPos, alpha);
           controls.target.lerp(targetPos, alpha);
           controls.update();
-          if (zoomTarget.distance < 3) {
-            controls.enablePan = false;
-            controls.enableZoom = false;
-            controls.enableRotate = false;
-          }
+          controls.enablePan = false;
+          controls.enableZoom = false;
+          controls.enableRotate = false;
         }
       } else if (zoomTarget && !zoomTarget.active) {
         // Returning to overview
@@ -1407,9 +1405,9 @@ export function MapPage() {
           const worldPos = s.spawnedPlants[i].position.clone();
           const baseY = worldPos.y;
           cameraTargetRef.current = {
-            target: new THREE.Vector3(worldPos.x, baseY + 4, worldPos.z),
-            distance: 10,
-            height: 2,
+            target: new THREE.Vector3(worldPos.x, baseY + 10, worldPos.z),
+            distance: 5,
+            height: -9,
             active: true,
           };
           setSelectedPlantIdx(i);
