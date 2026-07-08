@@ -22,15 +22,25 @@ export function PlantPreview({ plantId, className = "" }: { plantId: string; cla
     // Scene
     const scene = new THREE.Scene();
 
-    // Camera — perspective, positioned to look head-on at plant
-    const camera = new THREE.PerspectiveCamera(35, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
-    camera.position.set(0, 0, 8);
+    // Orthographic camera: no perspective distortion, perfect predictable sizing
+    const aspect = canvas.clientWidth / canvas.clientHeight;
+    const halfSize = 1; // temporary, recalculated below
+    const camera = new THREE.OrthographicCamera(
+      -halfSize * aspect,
+      halfSize * aspect,
+      halfSize,
+      -halfSize,
+      0.01,
+      200
+    );
+    camera.position.set(0, 0, 10);
+    camera.lookAt(0, 0, 0);
 
     // Lights
     const ambient = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambient);
     const dir = new THREE.DirectionalLight(0xffffff, 1.2);
-    dir.position.set(5, 5, 5);
+    dir.position.set(5, 8, 5);
     scene.add(dir);
     const back = new THREE.DirectionalLight(0xaaccff, 0.4);
     back.position.set(-3, 2, -5);
@@ -40,15 +50,39 @@ export function PlantPreview({ plantId, className = "" }: { plantId: string; cla
     const plant = buildPlantModel(plantId);
     scene.add(plant);
 
-    // Frame plant to fill view
-    const box = new THREE.Box3().setFromObject(plant);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
+    // Force update matrices so bounding calculations are accurate
+    plant.updateMatrixWorld(true);
+
+    // Measure tight bounding box from every transformed vertex
+    const worldVertices: THREE.Vector3[] = [];
+    plant.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        const posAttr = child.geometry.getAttribute("position");
+        const worldMat = child.matrixWorld;
+        const v = new THREE.Vector3();
+        for (let i = 0; i < posAttr.count; i++) {
+          v.fromBufferAttribute(posAttr, i);
+          v.applyMatrix4(worldMat);
+          worldVertices.push(v.clone());
+        }
+      }
+    });
+    const tightBox = new THREE.Box3().setFromPoints(worldVertices);
+    const center = tightBox.getCenter(new THREE.Vector3());
+    const size = tightBox.getSize(new THREE.Vector3());
+
+    // Center the model so it rotates around its own middle
+    plant.position.sub(center);
+
+    // Orthographic frustum: fit the largest dimension (width or height) with padding.
+    // A 1.3× padding guarantees nothing clips even for asymmetric shapes during rotation.
     const maxDim = Math.max(size.x, size.y, size.z);
-    const fov = camera.fov * (Math.PI / 180);
-    const desiredDist = (maxDim / 2) / Math.tan(fov / 2) * 1.3;
-    camera.position.z = desiredDist;
-    camera.lookAt(center);
+    const paddedHalf = (maxDim / 2) * 1.3;
+    camera.left = -paddedHalf * aspect;
+    camera.right = paddedHalf * aspect;
+    camera.top = paddedHalf;
+    camera.bottom = -paddedHalf;
+    camera.updateProjectionMatrix();
 
     // Slow auto-rotate
     let animId = 0;
