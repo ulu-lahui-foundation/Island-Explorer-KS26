@@ -1,0 +1,587 @@
+import * as THREE from "three";
+
+// ── ʻŌhiʻa Lehua procedural tree ──
+export function createOhiaTree() {
+  const treeGroup = new THREE.Group();
+  const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8a8377, roughness: 1.0 });
+  const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x2b3d26, roughness: 0.9 });
+  const blossomMaterial = new THREE.MeshStandardMaterial({ color: 0xe61515, roughness: 0.4 });
+  const maxDepth = 4;
+
+  function buildBranch(parent: THREE.Object3D, length: number, radius: number, depth: number) {
+    const branchGroup = new THREE.Group();
+    parent.add(branchGroup);
+    const branchGeo = new THREE.CylinderGeometry(radius * 0.65, radius, length, 12);
+    const branchMesh = new THREE.Mesh(branchGeo, trunkMaterial);
+    branchMesh.position.y = length / 2;
+    branchMesh.castShadow = true;
+    branchMesh.receiveShadow = true;
+    branchGroup.add(branchMesh);
+    const tip = new THREE.Group();
+    tip.position.y = length;
+    branchGroup.add(tip);
+    if (depth > 0) {
+      const numChildren = 2 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < numChildren; i++) {
+        const childRadius = radius * 0.7;
+        const childLength = length * (0.6 + Math.random() * 0.3);
+        const angleX = (Math.random() - 0.5) * 1.5;
+        const angleZ = (Math.random() - 0.5) * 1.5;
+        const angleY = Math.random() * Math.PI * 2;
+        const childBranch = buildBranch(tip, childLength, childRadius, depth - 1);
+        childBranch.rotation.set(angleX, angleY, angleZ);
+      }
+    } else {
+      addFoliage(tip);
+    }
+    return branchGroup;
+  }
+
+  function addFoliage(parent: THREE.Object3D) {
+    const numLeafClusters = 8 + Math.floor(Math.random() * 6);
+    for (let l = 0; l < numLeafClusters; l++) {
+      const leafRadius = 0.4 + Math.random() * 0.6;
+      const leafGeo = new THREE.SphereGeometry(leafRadius, 5, 5);
+      const leafMesh = new THREE.Mesh(leafGeo, leafMaterial);
+      leafMesh.position.set(
+        (Math.random() - 0.5) * 2.0,
+        (Math.random() - 0.5) * 1.5,
+        (Math.random() - 0.5) * 2.0
+      );
+      leafMesh.castShadow = true;
+      parent.add(leafMesh);
+    }
+    const numBlossoms = 4 + Math.floor(Math.random() * 5);
+    const stamenGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.6, 3);
+    stamenGeo.translate(0, 0.3, 0);
+    for (let i = 0; i < numBlossoms; i++) {
+      const blossomGroup = new THREE.Group();
+      blossomGroup.position.set(
+        (Math.random() - 0.5) * 2.5,
+        0.5 + Math.random() * 1.5,
+        (Math.random() - 0.5) * 2.5
+      );
+      const numStamens = 30 + Math.floor(Math.random() * 20);
+      for (let s = 0; s < numStamens; s++) {
+        const stamen = new THREE.Mesh(stamenGeo, blossomMaterial);
+        stamen.rotation.x = Math.random() * Math.PI;
+        stamen.rotation.y = Math.random() * Math.PI * 2;
+        blossomGroup.add(stamen);
+      }
+      parent.add(blossomGroup);
+    }
+  }
+
+  buildBranch(treeGroup, 4.0, 0.8, maxDepth);
+  return treeGroup;
+}
+
+// ── Naupaka Kahakai procedural bush ──
+export function createNaupakaBush() {
+  const bushGroup = new THREE.Group();
+  const stemMaterial = new THREE.MeshStandardMaterial({ color: 0x9c9681, roughness: 0.9 });
+  const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x6e9438, roughness: 0.5 });
+  const flowerMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+  const maxDepth = 3;
+
+  function buildStem(parent: THREE.Object3D, length: number, radius: number, depth: number) {
+    const stemGroup = new THREE.Group();
+    parent.add(stemGroup);
+    const stemGeo = new THREE.CylinderGeometry(radius * 0.7, radius, length, 8);
+    const stemMesh = new THREE.Mesh(stemGeo, stemMaterial);
+    stemMesh.position.y = length / 2;
+    stemMesh.castShadow = true;
+    stemMesh.receiveShadow = true;
+    stemGroup.add(stemMesh);
+    const tip = new THREE.Group();
+    tip.position.y = length;
+    stemGroup.add(tip);
+    if (depth > 0) {
+      const numChildren = 2 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < numChildren; i++) {
+        const childRadius = radius * 0.75;
+        const childLength = length * (0.7 + Math.random() * 0.3);
+        const angleX = (Math.random() - 0.5) * 1.0;
+        const angleZ = (Math.random() - 0.5) * 1.0;
+        const angleY = Math.random() * Math.PI * 2;
+        const childStem = buildStem(tip, childLength, childRadius, depth - 1);
+        childStem.rotation.set(angleX, angleY, angleZ);
+      }
+    } else {
+      addFoliageAndFlowers(tip);
+    }
+    return stemGroup;
+  }
+
+  function addFoliageAndFlowers(parent: THREE.Object3D) {
+    const numLeaves = 6 + Math.floor(Math.random() * 5);
+    const baseLeafGeo = new THREE.SphereGeometry(0.5, 8, 8);
+    baseLeafGeo.scale(0.8, 1.5, 0.2);
+    baseLeafGeo.translate(0, 0.75, 0);
+    for (let l = 0; l < numLeaves; l++) {
+      const leafMesh = new THREE.Mesh(baseLeafGeo, leafMaterial);
+      const angle = (l / numLeaves) * Math.PI * 2;
+      leafMesh.rotation.y = angle;
+      leafMesh.rotation.x = 0.5 + Math.random() * 0.5;
+      leafMesh.castShadow = true;
+      parent.add(leafMesh);
+    }
+    if (Math.random() > 0.1) {
+      const numFlowers = 2 + Math.floor(Math.random() * 4);
+      const petalGeo = new THREE.SphereGeometry(0.15, 6, 6);
+      petalGeo.scale(0.5, 2.0, 0.2);
+      petalGeo.translate(0, 0.25, 0);
+      for (let f = 0; f < numFlowers; f++) {
+        const flowerGroup = new THREE.Group();
+        flowerGroup.position.set(
+          (Math.random() - 0.5) * 0.4,
+          0.2 + Math.random() * 0.4,
+          (Math.random() - 0.5) * 0.4
+        );
+        const numPetals = 5;
+        for (let p = 0; p < numPetals; p++) {
+          const petal = new THREE.Mesh(petalGeo, flowerMaterial);
+          const petalAngle = (p / (numPetals - 1)) * Math.PI;
+          petal.rotation.z = petalAngle - (Math.PI / 2);
+          petal.rotation.x = 0.5;
+          flowerGroup.add(petal);
+        }
+        flowerGroup.rotation.y = Math.random() * Math.PI * 2;
+        parent.add(flowerGroup);
+      }
+    }
+  }
+
+  const numMainStems = 5 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < numMainStems; i++) {
+    const length = 1.5 + Math.random() * 1.0;
+    const mainStem = buildStem(bushGroup, length, 0.3, maxDepth);
+    const baseAngle = (i / numMainStems) * Math.PI * 2;
+    mainStem.rotation.y = baseAngle;
+    mainStem.rotation.z = 0.4 + Math.random() * 0.6;
+  }
+  return bushGroup;
+}
+
+// ── Kupukupu procedural fern ──
+export function createKupukupuFern() {
+  const fernGroup = new THREE.Group();
+  const stemMaterial = new THREE.MeshStandardMaterial({ color: 0x5e482b, roughness: 0.8 });
+  const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x4a7c29, roughness: 0.6 });
+  const leafGeo = new THREE.SphereGeometry(1, 6, 6);
+  leafGeo.scale(0.35, 0.04, 0.09);
+  leafGeo.translate(0.35, 0, 0);
+
+  function buildFrond(lengthScale: number) {
+    const frondGroup = new THREE.Group();
+    const numSegments = 25 + Math.floor(Math.random() * 20);
+    const spread = (1.5 + Math.random() * 1.5) * lengthScale;
+    const height = (1.2 + Math.random() * 1.5) * lengthScale;
+    const curvePoints: THREE.Vector3[] = [];
+    const leafPlacements: { pos: THREE.Vector3; pitch: number; size: number }[] = [];
+
+    for (let i = 0; i <= numSegments; i++) {
+      const t = i / numSegments;
+      const z = t * spread;
+      const y = Math.sin(t * Math.PI * 0.85) * height;
+      const pos = new THREE.Vector3(0, y, z);
+      curvePoints.push(pos);
+      if (i > 2 && i < numSegments) {
+        const size = Math.sin(t * Math.PI) * (0.6 + Math.random() * 0.4) * lengthScale;
+        const prevY = Math.sin(((i - 1) / numSegments) * Math.PI * 0.85) * height;
+        const prevZ = ((i - 1) / numSegments) * spread;
+        const pitch = Math.atan2(y - prevY, z - prevZ);
+        leafPlacements.push({ pos, pitch, size });
+      }
+    }
+
+    const curve = new THREE.CatmullRomCurve3(curvePoints);
+    const stemGeo = new THREE.TubeGeometry(curve, numSegments, 0.015 * lengthScale, 5, false);
+    const stemMesh = new THREE.Mesh(stemGeo, stemMaterial);
+    stemMesh.castShadow = true;
+    frondGroup.add(stemMesh);
+
+    leafPlacements.forEach(placement => {
+      const pairGroup = new THREE.Group();
+      pairGroup.position.copy(placement.pos);
+      pairGroup.rotation.x = -placement.pitch;
+      const rightLeaf = new THREE.Mesh(leafGeo, leafMaterial);
+      rightLeaf.scale.set(placement.size, placement.size, placement.size);
+      rightLeaf.rotation.y = 0.15;
+      rightLeaf.rotation.z = 0.15;
+      rightLeaf.castShadow = true;
+      pairGroup.add(rightLeaf);
+      const leftLeaf = new THREE.Mesh(leafGeo, leafMaterial);
+      leftLeaf.scale.set(placement.size, placement.size, placement.size);
+      leftLeaf.rotation.y = Math.PI - 0.15;
+      leftLeaf.rotation.z = -0.15;
+      leftLeaf.castShadow = true;
+      pairGroup.add(leftLeaf);
+      frondGroup.add(pairGroup);
+    });
+    return frondGroup;
+  }
+
+  const numFronds = 70 + Math.floor(Math.random() * 30);
+  for (let i = 0; i < numFronds; i++) {
+    const lengthScale = 0.5 + Math.random() * 0.8;
+    const frond = buildFrond(lengthScale);
+    const baseAngle = (i / numFronds) * Math.PI * 2 + Math.random() * 0.2;
+    frond.rotation.y = baseAngle;
+    frond.position.x = (Math.random() - 0.5) * 3.5;
+    frond.position.z = (Math.random() - 0.5) * 3.5;
+    fernGroup.add(frond);
+  }
+  return fernGroup;
+}
+
+// ── Kalo (Taro) procedural plant ──
+export function createKaloPlant() {
+  const plantGroup = new THREE.Group();
+  const matCorm = new THREE.MeshStandardMaterial({ color: 0x4a3225, roughness: 0.9, metalness: 0.05 });
+  const matRoot = new THREE.MeshStandardMaterial({ color: 0x7a5c43, roughness: 0.95, metalness: 0.0 });
+  const matLeafFlesh = new THREE.MeshStandardMaterial({ color: 0x366e2d, roughness: 0.85, metalness: 0.05, side: THREE.DoubleSide });
+  const matVein = new THREE.MeshStandardMaterial({ color: 0x5a9e45, roughness: 0.7, metalness: 0.0 });
+  const sphereGeo = new THREE.SphereGeometry(1, 16, 12);
+  const cylinderGeo = new THREE.CylinderGeometry(1, 1, 1, 8);
+  cylinderGeo.translate(0, 0.5, 0);
+
+  // Corm
+  const cormGroup = new THREE.Group();
+  const numCormSlices = 10;
+  const cormBaseHeight = 0.5;
+  for (let i = 0; i < numCormSlices; i++) {
+    const t = i / (numCormSlices - 1);
+    const radius = Math.sin(t * Math.PI) * 2.5 + 0.8;
+    const sliceGeo = new THREE.CylinderGeometry(radius * 0.9, radius, cormBaseHeight, 16);
+    const slice = new THREE.Mesh(sliceGeo, matCorm);
+    slice.position.set((Math.random() - 0.5) * 0.2, i * cormBaseHeight * 0.8, (Math.random() - 0.5) * 0.2);
+    slice.castShadow = true;
+    slice.receiveShadow = true;
+    cormGroup.add(slice);
+  }
+
+  // Roots
+  const numRoots = 45;
+  for (let i = 0; i < numRoots; i++) {
+    const rootGroup = new THREE.Group();
+    const phi = Math.PI / 2 + Math.random() * (Math.PI / 2);
+    const theta = Math.random() * Math.PI * 2;
+    const radiusC = 2.0;
+    let currP = new THREE.Vector3(
+      radiusC * Math.sin(phi) * Math.cos(theta),
+      (radiusC * Math.cos(phi)) + (cormBaseHeight * 3),
+      radiusC * Math.sin(phi) * Math.sin(theta)
+    );
+    let currDir = currP.clone().normalize();
+    currDir.y -= 0.5;
+    currDir.normalize();
+    const numSegments = 4 + Math.floor(Math.random() * 3);
+    let currentThickness = 0.08;
+    for (let k = 0; k < numSegments; k++) {
+      const segLen = 0.4 + Math.random() * 0.5;
+      const nextP = currP.clone().add(currDir.clone().multiplyScalar(segLen));
+      const nextThickness = currentThickness * 0.7;
+      const rGeo = new THREE.CylinderGeometry(nextThickness, currentThickness, segLen, 5);
+      const rMesh = new THREE.Mesh(rGeo, matRoot);
+      rMesh.position.copy(currP.clone().lerp(nextP, 0.5));
+      rMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), currDir);
+      rootGroup.add(rMesh);
+      currP = nextP;
+      currentThickness = nextThickness;
+      currDir.add(new THREE.Vector3((Math.random()-0.5)*0.8, (Math.random()-0.5)*0.4, (Math.random()-0.5)*0.8)).normalize();
+    }
+    cormGroup.add(rootGroup);
+  }
+  plantGroup.add(cormGroup);
+
+  // Leaf builder
+  function buildTaroLeaf(length: number, width: number) {
+    const leafGroup = new THREE.Group();
+    const heightLobe = length * 0.35;
+    const numBodySteps = 16;
+    const numLobeSteps = 8;
+    const getZOffset = (x: number, y: number) => -0.04 * (x * x + Math.pow(Math.max(0, -y), 1.3));
+
+    for (let i = 0; i <= numBodySteps; i++) {
+      const t = i / numBodySteps;
+      const y = -t * length;
+      const widthF = (1 - Math.pow(t, 1.4)) * width;
+      const zOffset = getZOffset(0, y) + i * 0.002;
+      const flesh = new THREE.Mesh(sphereGeo, matLeafFlesh);
+      flesh.position.set(0, y, zOffset);
+      flesh.scale.set(widthF * 0.5, (length / numBodySteps) * 1.8, 0.06);
+      flesh.castShadow = true;
+      flesh.receiveShadow = true;
+      leafGroup.add(flesh);
+      if (i < numBodySteps) {
+        const nextY = -((i + 1) / numBodySteps) * length;
+        const nextZ = getZOffset(0, nextY);
+        const veinLen = y - nextY;
+        const vRadius1 = 0.18 * (1 - t) + 0.03;
+        const vRadius2 = 0.18 * (1 - ((i + 1) / numBodySteps)) + 0.03;
+        const vein = new THREE.Mesh(new THREE.CylinderGeometry(vRadius2, vRadius1, veinLen * 1.1, 6), matVein);
+        vein.position.set(0, (y + nextY) / 2, (zOffset + nextZ) / 2 + 0.08);
+        leafGroup.add(vein);
+      }
+      if (i > 1 && i < numBodySteps - 2 && i % 2 === 0) {
+        const veinSpread = widthF * 0.85;
+        const latLen = Math.sqrt(Math.pow(veinSpread / 2, 2) + Math.pow(length * 0.15, 2));
+        const vThickness = 0.06 * (1 - t) + 0.02;
+        const leftVein = new THREE.Mesh(new THREE.CylinderGeometry(0.01, vThickness, latLen, 5), matVein);
+        leftVein.position.set(-veinSpread / 4, y - length * 0.075, zOffset + 0.06);
+        leftVein.rotation.z = Math.atan2(length * 0.15, veinSpread / 2);
+        leafGroup.add(leftVein);
+        const rightVein = new THREE.Mesh(new THREE.CylinderGeometry(0.01, vThickness, latLen, 5), matVein);
+        rightVein.position.set(veinSpread / 4, y - length * 0.075, zOffset + 0.06);
+        rightVein.rotation.z = -Math.atan2(length * 0.15, veinSpread / 2);
+        leafGroup.add(rightVein);
+      }
+    }
+
+    for (const side of [-1, 1]) {
+      for (let i = 0; i <= numLobeSteps; i++) {
+        const t = i / numLobeSteps;
+        const x = side * t * width * 0.42;
+        const y = t * heightLobe;
+        const widthF = (1 - Math.pow(t, 1.8)) * (width * 0.45);
+        const flesh = new THREE.Mesh(sphereGeo, matLeafFlesh);
+        const zOffset = getZOffset(x, y) + i * 0.002 - 0.02;
+        flesh.position.set(x, y, zOffset);
+        flesh.rotation.z = side * -Math.PI / 5 * t;
+        flesh.scale.set(widthF, (heightLobe / numLobeSteps) * 2.0, 0.06);
+        flesh.castShadow = true;
+        flesh.receiveShadow = true;
+        leafGroup.add(flesh);
+        if (i < numLobeSteps) {
+          const nextT = (i + 1) / numLobeSteps;
+          const nextX = side * nextT * width * 0.42;
+          const nextY = nextT * heightLobe;
+          const vLen = Math.sqrt((nextX - x)**2 + (nextY - y)**2);
+          const vRadius1 = 0.12 * (1 - t) + 0.02;
+          const vRadius2 = 0.12 * (1 - nextT) + 0.02;
+          const vein = new THREE.Mesh(new THREE.CylinderGeometry(vRadius2, vRadius1, vLen * 1.1, 6), matVein);
+          vein.position.set((x + nextX) / 2, (y + nextY) / 2, zOffset + 0.08);
+          vein.rotation.z = Math.atan2(y - nextY, x - nextX) + Math.PI / 2;
+          leafGroup.add(vein);
+        }
+      }
+    }
+    return leafGroup;
+  }
+
+  // Stalks and leaves
+  const numStalks = 6 + Math.floor(Math.random() * 3);
+  const topOfCorm = numCormSlices * cormBaseHeight * 0.8;
+  for (let i = 0; i < numStalks; i++) {
+    const isCenterSprout = (i === 0);
+    const angle = (i / numStalks) * Math.PI * 2 + (Math.random() * 0.5);
+    const stalkHeight = isCenterSprout ? 28 : 20 + Math.random() * 10;
+    const stalkLean = isCenterSprout ? 2 : 12 + Math.random() * 8;
+    const p0 = new THREE.Vector3(Math.cos(angle) * 0.5, topOfCorm, Math.sin(angle) * 0.5);
+    const p1 = new THREE.Vector3(Math.cos(angle) * stalkLean * 0.5, topOfCorm + stalkHeight * 0.4, Math.sin(angle) * stalkLean * 0.5);
+    const p2 = new THREE.Vector3(Math.cos(angle) * stalkLean, topOfCorm + stalkHeight, Math.sin(angle) * stalkLean);
+    const curve = new THREE.QuadraticBezierCurve3(p0, p1, p2);
+    const stalkSegments = 12;
+    const stalkGroup = new THREE.Group();
+    for (let j = 0; j < stalkSegments; j++) {
+      const t1 = j / stalkSegments;
+      const t2 = (j + 1) / stalkSegments;
+      const pt1 = curve.getPoint(t1);
+      const pt2 = curve.getPoint(t2);
+      const radius1 = THREE.MathUtils.lerp(1.8, 0.4, t1);
+      const radius2 = THREE.MathUtils.lerp(1.8, 0.4, t2);
+      const dist = pt1.distanceTo(pt2);
+      const stalkMat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color().lerpColors(new THREE.Color(0x6b4f62), new THREE.Color(0x84b55e), t1),
+        roughness: 0.6,
+        metalness: 0.05
+      });
+      const segGeo = new THREE.CylinderGeometry(radius2, radius1, dist * 1.05, 12);
+      const seg = new THREE.Mesh(segGeo, stalkMat);
+      seg.position.copy(pt1.clone().lerp(pt2, 0.5));
+      const dir = pt2.clone().sub(pt1).normalize();
+      seg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      if (j < 3) seg.scale.set(1.2, 1, 0.8);
+      seg.castShadow = true;
+      seg.receiveShadow = true;
+      stalkGroup.add(seg);
+    }
+    plantGroup.add(stalkGroup);
+
+    if (isCenterSprout) {
+      const sproutGroup = new THREE.Group();
+      sproutGroup.position.copy(p2);
+      const sproutDir = curve.getTangent(1).normalize();
+      sproutGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), sproutDir);
+      const sMesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.05, 0.4, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x98d46a, roughness: 0.7 })
+      );
+      sMesh.position.y = 4;
+      sproutGroup.add(sMesh);
+      plantGroup.add(sproutGroup);
+    } else {
+      const leafLength = 16 + Math.random() * 6;
+      const leafWidth = 10 + Math.random() * 5;
+      const leaf = buildTaroLeaf(leafLength, leafWidth);
+      leaf.position.copy(p2);
+      const stalkTangent = curve.getTangent(1).normalize();
+      const droopVector = new THREE.Vector3(0, -1.2, 0);
+      const targetPos = p2.clone().add(stalkTangent).add(droopVector);
+      leaf.lookAt(targetPos);
+      leaf.rotateX(-Math.PI / 2);
+      leaf.rotateY((Math.random() - 0.5) * 0.4);
+      plantGroup.add(leaf);
+    }
+  }
+
+  plantGroup.position.y = -topOfCorm * 0.5;
+  return plantGroup;
+}
+
+// ── Build a simple generic placeholder plant ──
+function createGenericPlant() {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: 0x4CAF50, roughness: 0.7, flatShading: true });
+  const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3, 0), mat);
+  bush.position.y = 0.25;
+  group.add(bush);
+  return group;
+}
+
+// ── Build a complete plant model group with per-plant scale ──
+export function buildPlantModel(plantId: string): THREE.Group {
+  const group = new THREE.Group();
+  const plantMat = new THREE.MeshStandardMaterial({ color: 0x4CAF50, roughness: 0.7, flatShading: true });
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5D4037, roughness: 0.9, flatShading: true });
+  const flowerMat = new THREE.MeshStandardMaterial({ color: 0xE91E63, roughness: 0.6, flatShading: true });
+
+  switch (plantId) {
+    case "kalo":
+    case "taro": {
+      const kalo = createKaloPlant();
+      group.add(kalo);
+      group.scale.set(0.35, 0.35, 0.35);
+      break;
+    }
+    case "kukui": {
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.5, 6), trunkMat);
+      trunk.position.y = 0.75;
+      group.add(trunk);
+      const canopy = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8, 1), plantMat);
+      canopy.position.y = 1.6;
+      group.add(canopy);
+      break;
+    }
+    case "ohia": {
+      const ohia = createOhiaTree();
+      group.add(ohia);
+      group.scale.set(5, 5, 5);
+      break;
+    }
+    case "naupaka": {
+      const naupaka = createNaupakaBush();
+      group.add(naupaka);
+      group.scale.set(8, 8, 8);
+      break;
+    }
+    case "pohinahina": {
+      const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4, 0), plantMat);
+      bush.position.y = 0.25;
+      bush.scale.set(1.2, 0.6, 1.2);
+      group.add(bush);
+      break;
+    }
+    case "kupukupu": {
+      const fern = createKupukupuFern();
+      group.add(fern);
+      group.scale.set(4, 4, 4);
+      break;
+    }
+    case "palapalai":
+    case "hapuu": {
+      for (let i = 0; i < 5; i++) {
+        const frond = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.8), plantMat);
+        frond.position.set((Math.random() - 0.5) * 0.3, 0.3 + Math.random() * 0.2, (Math.random() - 0.5) * 0.3);
+        frond.rotation.y = Math.random() * Math.PI * 2;
+        frond.rotation.x = -0.4;
+        group.add(frond);
+      }
+      break;
+    }
+    case "loulu": {
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 2, 6), trunkMat);
+      trunk.position.y = 1;
+      group.add(trunk);
+      for (let i = 0; i < 6; i++) {
+        const frond = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 1), plantMat);
+        frond.position.set(Math.cos((i / 6) * Math.PI * 2) * 0.3, 2, Math.sin((i / 6) * Math.PI * 2) * 0.3);
+        frond.rotation.y = (i / 6) * Math.PI * 2;
+        frond.rotation.x = -0.6;
+        group.add(frond);
+      }
+      break;
+    }
+    case "ilima": {
+      const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3, 0), plantMat);
+      bush.position.y = 0.2;
+      bush.scale.set(1, 0.7, 1);
+      group.add(bush);
+      for (let i = 0; i < 4; i++) {
+        const flower = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), new THREE.MeshStandardMaterial({ color: 0xFFD700, roughness: 0.5 }));
+        flower.position.set((Math.random() - 0.5) * 0.4, 0.4 + Math.random() * 0.2, (Math.random() - 0.5) * 0.4);
+        group.add(flower);
+      }
+      break;
+    }
+    case "aalii": {
+      const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.35, 0), plantMat);
+      bush.position.y = 0.3;
+      group.add(bush);
+      for (let i = 0; i < 6; i++) {
+        const pod = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.15, 4, 4), new THREE.MeshStandardMaterial({ color: 0x8B0000, roughness: 0.6 }));
+        pod.position.set((Math.random() - 0.5) * 0.5, 0.5 + Math.random() * 0.2, (Math.random() - 0.5) * 0.5);
+        group.add(pod);
+      }
+      break;
+    }
+    case "ulu": {
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 1.8, 6), trunkMat);
+      trunk.position.y = 0.9;
+      group.add(trunk);
+      const canopy = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 1), plantMat);
+      canopy.position.y = 2.2;
+      group.add(canopy);
+      for (let i = 0; i < 3; i++) {
+        const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 6), new THREE.MeshStandardMaterial({ color: 0x8BC34A, roughness: 0.6 }));
+        fruit.position.set((Math.random() - 0.5) * 0.8, 2 + Math.random() * 0.3, (Math.random() - 0.5) * 0.8);
+        group.add(fruit);
+      }
+      break;
+    }
+    case "lai": {
+      for (let i = 0; i < 5; i++) {
+        const leaf = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.8), plantMat);
+        leaf.position.set((Math.random() - 0.5) * 0.2, 0.3 + i * 0.15, (Math.random() - 0.5) * 0.2);
+        leaf.rotation.y = Math.random() * Math.PI * 2;
+        leaf.rotation.x = -0.2;
+        group.add(leaf);
+      }
+      break;
+    }
+    default: {
+      group.add(createGenericPlant());
+    }
+  }
+
+  // Ensure all meshes in the group cast/receive shadows
+  group.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+
+  return group;
+}
