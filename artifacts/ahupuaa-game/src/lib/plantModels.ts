@@ -163,6 +163,161 @@ export function createNaupakaBush() {
   return bushGroup;
 }
 
+// ── Loulu (Pritchardia palm) procedural model ──
+export function createLoulu() {
+  const louluGroup = new THREE.Group();
+  const dummy = new THREE.Object3D();
+  const colorHelper = new THREE.Color();
+
+  const trunkHeight = 8.0;
+  const trunkBaseRadius = 0.45;
+  const trunkTopRadius = 0.25;
+  const numRings = 30;
+  const numLeaves = 20;
+  const numDeadLeaves = 4;
+  const segmentsPerLeaf = 20;
+  const fruitStalks = 3;
+  const fruitsPerStalk = 20;
+
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x7a7167, roughness: 0.9, metalness: 0.0 });
+  const ringMat  = new THREE.MeshStandardMaterial({ color: 0x595148, roughness: 1.0, metalness: 0.0 });
+  const stalkMat = new THREE.MeshStandardMaterial({ color: 0x6a7d51, roughness: 0.7, metalness: 0.0 });
+  const deadStalkMat = new THREE.MeshStandardMaterial({ color: 0x6e634f, roughness: 0.9, metalness: 0.0 });
+  const leafMat  = new THREE.MeshStandardMaterial({ color: 0x4a7a30, roughness: 0.4, metalness: 0.05, side: THREE.DoubleSide });
+  const deadLeafMat = new THREE.MeshStandardMaterial({ color: 0x8b7d5e, roughness: 0.8, metalness: 0.0, side: THREE.DoubleSide });
+  const fruitMat = new THREE.MeshStandardMaterial({ color: 0x1a2e12, roughness: 0.3, metalness: 0.1 });
+
+  // Trunk with organic vertex noise
+  const trunkGeo = new THREE.CylinderGeometry(trunkTopRadius, trunkBaseRadius, trunkHeight, 14, 10);
+  trunkGeo.translate(0, trunkHeight / 2, 0);
+  const trunkPos = trunkGeo.attributes.position;
+  for (let i = 0; i < trunkPos.count; i++) {
+    const noise = (Math.random() - 0.5) * 0.015;
+    trunkPos.setX(i, trunkPos.getX(i) + noise);
+    trunkPos.setZ(i, trunkPos.getZ(i) + noise);
+  }
+  trunkGeo.computeVertexNormals();
+  louluGroup.add(new THREE.Mesh(trunkGeo, trunkMat));
+
+  // Leaf-scar rings (instanced tori)
+  const ringGeo = new THREE.TorusGeometry(1, 0.015, 6, 14);
+  ringGeo.rotateX(Math.PI / 2);
+  const ringsInst = new THREE.InstancedMesh(ringGeo, ringMat, numRings);
+  louluGroup.add(ringsInst);
+  for (let r = 0; r < numRings; r++) {
+    const t = Math.pow(r / (numRings - 1), 0.9);
+    const y = t * trunkHeight * 0.98;
+    const curR = THREE.MathUtils.lerp(trunkBaseRadius, trunkTopRadius, y / trunkHeight);
+    dummy.position.set(0, y, 0);
+    dummy.scale.set(curR, 1, curR);
+    dummy.rotation.set((Math.random() - 0.5) * 0.05, Math.random() * Math.PI, (Math.random() - 0.5) * 0.05);
+    dummy.updateMatrix();
+    ringsInst.setMatrixAt(r, dummy.matrix);
+  }
+  ringsInst.instanceMatrix.needsUpdate = true;
+
+  // Fan-leaf segment geometry (shared between live and dead)
+  const segLen = 2.0;
+  const segGeo = new THREE.CylinderGeometry(0.005, 0.04, segLen, 4);
+  segGeo.translate(0, segLen / 2, 0);
+
+  const leavesInst = new THREE.InstancedMesh(segGeo, leafMat, numLeaves * segmentsPerLeaf);
+  const deadInst   = new THREE.InstancedMesh(segGeo, deadLeafMat, numDeadLeaves * segmentsPerLeaf);
+  louluGroup.add(leavesInst);
+  louluGroup.add(deadInst);
+
+  let liveIdx = 0;
+  let deadIdx = 0;
+  const totalFronds = numLeaves + numDeadLeaves;
+
+  for (let i = 0; i < totalFronds; i++) {
+    const isDead = i < numDeadLeaves;
+    const tVal = isDead ? (i / numDeadLeaves) : ((i - numDeadLeaves) / numLeaves);
+    const angle = i * 2.39996; // golden angle phyllotaxis
+    const outDir = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+
+    const vertDir = isDead
+      ? -1.5 + Math.random() * 0.5
+      : THREE.MathUtils.lerp(-0.3, 1.8, tVal);
+    const stalkEndDir = outDir.clone().add(new THREE.Vector3(0, vertDir, 0)).normalize();
+    const stalkLen = isDead ? 0.8 + Math.random() * 0.4 : 1.2 + tVal * 0.5;
+    const baseH = isDead
+      ? trunkHeight - 0.5 + Math.random() * 0.3
+      : trunkHeight - 0.2 + tVal * 0.4;
+
+    const p0 = new THREE.Vector3(0, baseH, 0);
+    const p1 = p0.clone().add(outDir.clone().multiplyScalar(stalkLen * 0.4)).add(new THREE.Vector3(0, isDead ? -0.2 : 0.5, 0));
+    const p2 = p0.clone().add(stalkEndDir.clone().multiplyScalar(stalkLen));
+
+    const stalkCurve = new THREE.QuadraticBezierCurve3(p0, p1, p2);
+    const stalkMesh = new THREE.Mesh(new THREE.TubeGeometry(stalkCurve, 10, 0.035, 5, false), isDead ? deadStalkMat : stalkMat);
+    louluGroup.add(stalkMesh);
+
+    const tangent  = stalkCurve.getTangentAt(1).normalize();
+    const up       = new THREE.Vector3(0, 1, 0);
+    const binormal = new THREE.Vector3().crossVectors(tangent, up).normalize();
+    const normal   = new THREE.Vector3().crossVectors(binormal, tangent).normalize();
+
+    for (let s = 0; s < segmentsPerLeaf; s++) {
+      const spreadFrac = s / (segmentsPerLeaf - 1);
+      const spreadAngle = THREE.MathUtils.lerp(-Math.PI * 0.42, Math.PI * 0.42, spreadFrac);
+      const dir = tangent.clone().applyAxisAngle(normal, spreadAngle);
+      const outerDroop = Math.abs(spreadAngle) * (isDead ? 1.0 : 0.4);
+      const fold = s % 2 === 0 ? 0.05 : -0.05;
+      dir.applyAxisAngle(binormal, -outerDroop + fold);
+
+      dummy.position.copy(p2);
+      dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+      const lenScale = 0.8 + Math.pow(Math.sin(spreadFrac * Math.PI), 0.5) * 0.3 + Math.random() * 0.1;
+      dummy.scale.set(1, lenScale, 0.15);
+      dummy.updateMatrix();
+
+      if (isDead) {
+        deadInst.setMatrixAt(deadIdx++, dummy.matrix);
+      } else {
+        colorHelper.setHSL(0.28 + Math.random() * 0.03, 0.5 + tVal * 0.2, 0.25 + tVal * 0.15);
+        leavesInst.setMatrixAt(liveIdx, dummy.matrix);
+        leavesInst.setColorAt(liveIdx, colorHelper);
+        liveIdx++;
+      }
+    }
+  }
+
+  leavesInst.instanceMatrix.needsUpdate = true;
+  if (leavesInst.instanceColor) leavesInst.instanceColor.needsUpdate = true;
+  deadInst.instanceMatrix.needsUpdate = true;
+
+  // Hanging fruit clusters
+  const fruitGeo  = new THREE.SphereGeometry(0.04, 6, 6);
+  const fruitInst = new THREE.InstancedMesh(fruitGeo, fruitMat, fruitStalks * fruitsPerStalk);
+  louluGroup.add(fruitInst);
+  let fruitIdx = 0;
+
+  for (let fs = 0; fs < fruitStalks; fs++) {
+    const fa  = (fs / fruitStalks) * Math.PI * 2 + Math.random();
+    const fOut = new THREE.Vector3(Math.cos(fa), 0, Math.sin(fa));
+    const fp0  = new THREE.Vector3(0, trunkHeight - 0.4, 0);
+    const fp1  = fp0.clone().add(fOut.clone().multiplyScalar(0.6)).add(new THREE.Vector3(0, 0.2, 0));
+    const fp2  = fp0.clone().add(fOut.clone().multiplyScalar(0.8)).add(new THREE.Vector3(0, -1.2, 0));
+    const fStalkCurve = new THREE.QuadraticBezierCurve3(fp0, fp1, fp2);
+    louluGroup.add(new THREE.Mesh(new THREE.TubeGeometry(fStalkCurve, 14, 0.02, 5, false), deadStalkMat));
+
+    for (let f = 0; f < fruitsPerStalk; f++) {
+      const ft  = 0.4 + Math.random() * 0.6;
+      const fpt = fStalkCurve.getPointAt(ft);
+      const rA  = Math.random() * Math.PI * 2;
+      const rD  = Math.random() * 0.12;
+      dummy.position.copy(fpt).add(new THREE.Vector3(Math.cos(rA) * rD, (Math.random() - 0.5) * 0.1, Math.sin(rA) * rD));
+      dummy.scale.setScalar(0.7 + Math.random() * 0.5);
+      dummy.updateMatrix();
+      fruitInst.setMatrixAt(fruitIdx++, dummy.matrix);
+    }
+  }
+  fruitInst.instanceMatrix.needsUpdate = true;
+
+  return louluGroup;
+}
+
 // ── Palapalai (Hawaiian lace fern) procedural model ──
 export function createPalapalai() {
   const plantGroup = new THREE.Group();
@@ -1033,16 +1188,9 @@ export function buildPlantModel(plantId: string): THREE.Group {
       break;
     }
     case "loulu": {
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 2, 6), trunkMat);
-      trunk.position.y = 1;
-      group.add(trunk);
-      for (let i = 0; i < 6; i++) {
-        const frond = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 1), plantMat);
-        frond.position.set(Math.cos((i / 6) * Math.PI * 2) * 0.3, 2, Math.sin((i / 6) * Math.PI * 2) * 0.3);
-        frond.rotation.y = (i / 6) * Math.PI * 2;
-        frond.rotation.x = -0.6;
-        group.add(frond);
-      }
+      const loulu = createLoulu();
+      group.add(loulu);
+      group.scale.set(0.28, 0.28, 0.28);
       break;
     }
     case "ilima": {

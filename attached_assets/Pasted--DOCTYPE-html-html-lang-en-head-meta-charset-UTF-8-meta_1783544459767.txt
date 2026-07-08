@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Procedural Loulu (Pritchardia Palm) - Three.js</title>
+   <style>
+       body {
+           margin: 0;
+           overflow: hidden;
+           background-color: #d4f0ff; /* Soft tropical sky blue */
+           font-family: sans-serif;
+       }
+       #canvas-container {
+           width: 100vw;
+           height: 100vh;
+       }
+       #ui {
+           position: absolute;
+           bottom: 20px;
+           left: 20px;
+           background: rgba(0, 0, 0, 0.75);
+           color: white;
+           padding: 15px;
+           border-radius: 8px;
+           pointer-events: none;
+       }
+       h1 { margin: 0 0 5px 0; font-size: 1.2rem; color: #4ade80; }
+       p { margin: 0; font-size: 0.9rem; color: #cbd5e1; }
+   </style>
+</head>
+<body>
+   <div id="canvas-container"></div>
+   <div id="ui">
+       <h1>Procedural Loulu (Pritchardia Palm)</h1>
+       <p>100% Code-Generated Geometry</p>
+       <p>Left Click: Rotate | Right Click: Pan | Scroll: Zoom</p>
+   </div>
+
+
+   <!-- Load Three.js and OrbitControls from CDN -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+
+   <script>
+       /**
+        * Creates a fully procedural Hawaiian Loulu (Pritchardia Palm) 3D Model.
+        * Requirements: Self-contained, procedural realism, MeshStandardMaterial, no flatShading,
+        * complex clustered structures (tall ringed trunk, palmate/fan leaves, hanging fruit clusters).
+        * @returns {THREE.Group} The complete Loulu palm.
+        */
+       function createLoulu() {
+           const louluGroup = new THREE.Group();
+           const dummy = new THREE.Object3D();
+           const colorHelper = new THREE.Color();
+
+
+           // --- CONFIGURATION ---
+           const trunkHeight = 8.0;
+           const trunkBaseRadius = 0.45;
+           const trunkTopRadius = 0.25;
+          
+           const numRings = 70;          // Horizontal leaf scar rings
+           const numLeaves = 45;         // Total active leaves in the canopy
+           const numDeadLeaves = 10;     // Drooping brown leaves under the crown
+           const segmentsPerLeaf = 45;   // The "folds" of the open hand
+           const fruitStalks = 4;        // Clusters of hanging fruits
+           const fruitsPerStalk = 60;
+
+
+           // --- MATERIALS (Procedural Realism, No FlatShading) ---
+           const trunkMat = new THREE.MeshStandardMaterial({
+               color: 0x7a7167, // Grayish-brown
+               roughness: 0.9,
+               metalness: 0.0
+           });
+
+
+           const ringMat = new THREE.MeshStandardMaterial({
+               color: 0x595148, // Darker grayish-brown for scars
+               roughness: 1.0,
+               metalness: 0.0
+           });
+
+
+           const stalkMat = new THREE.MeshStandardMaterial({
+               color: 0x6a7d51, // Greenish-brown for thick stems
+               roughness: 0.7,
+               metalness: 0.0
+           });
+
+
+           const deadStalkMat = new THREE.MeshStandardMaterial({
+               color: 0x6e634f, // Withered brown
+               roughness: 0.9,
+               metalness: 0.0
+           });
+
+
+           const leafMat = new THREE.MeshStandardMaterial({
+               color: 0x4a7a30, // Rich green
+               roughness: 0.4,  // Slightly reflective
+               metalness: 0.05,
+               side: THREE.DoubleSide
+           });
+
+
+           const deadLeafMat = new THREE.MeshStandardMaterial({
+               color: 0x8b7d5e, // Withered tan/brown
+               roughness: 0.8,
+               metalness: 0.0,
+               side: THREE.DoubleSide
+           });
+
+
+           const fruitMat = new THREE.MeshStandardMaterial({
+               color: 0x1a2e12, // Dark green/black ripe fruits
+               roughness: 0.3,
+               metalness: 0.1
+           });
+
+
+           // --- 1. TRUNK (Tall, straight, grayish-brown) ---
+           const trunkGeo = new THREE.CylinderGeometry(trunkTopRadius, trunkBaseRadius, trunkHeight, 16, 12);
+           trunkGeo.translate(0, trunkHeight / 2, 0); // Set origin to bottom
+          
+           // Add subtle organic noise to trunk vertices
+           const pos = trunkGeo.attributes.position;
+           for (let i = 0; i < pos.count; i++) {
+               let x = pos.getX(i);
+               let z = pos.getZ(i);
+               const noise = (Math.random() - 0.5) * 0.015;
+               pos.setX(i, x + noise);
+               pos.setZ(i, z + noise);
+           }
+           trunkGeo.computeVertexNormals();
+
+
+           const trunkMesh = new THREE.Mesh(trunkGeo, trunkMat);
+           trunkMesh.castShadow = true;
+           trunkMesh.receiveShadow = true;
+           louluGroup.add(trunkMesh);
+
+
+           // --- 2. TRUNK RINGS (Leaf Scars) ---
+           const ringGeo = new THREE.TorusGeometry(1, 0.015, 8, 16);
+           ringGeo.rotateX(Math.PI / 2); // Lay flat
+           const ringsInstanced = new THREE.InstancedMesh(ringGeo, ringMat, numRings);
+           ringsInstanced.receiveShadow = true;
+           louluGroup.add(ringsInstanced);
+
+
+           for (let r = 0; r < numRings; r++) {
+               // Space rings evenly, slightly denser near top
+               const t = Math.pow(r / (numRings - 1), 0.9);
+               const y = t * trunkHeight * 0.98; // Leave very top clear
+              
+               // Scale rings to match the trunk taper
+               const currentRadius = THREE.MathUtils.lerp(trunkBaseRadius, trunkTopRadius, y / trunkHeight);
+              
+               dummy.position.set(0, y, 0);
+               dummy.scale.set(currentRadius, 1, currentRadius);
+              
+               // Add slight chaotic tilt to naturalize the rings
+               dummy.rotation.set(
+                   (Math.random() - 0.5) * 0.05,
+                   Math.random() * Math.PI,
+                   (Math.random() - 0.5) * 0.05
+               );
+               dummy.updateMatrix();
+               ringsInstanced.setMatrixAt(r, dummy.matrix);
+           }
+
+
+           // --- 3. PALM CROWN (Fan Leaves) ---
+           // A Loulu leaf is a fan made by clustering many narrow segments spreading outward.
+          
+           // Segment Geometry: thin tapered cylinder, flattened
+           const segmentLength = 2.0;
+           const segmentGeo = new THREE.CylinderGeometry(0.005, 0.04, segmentLength, 5);
+           segmentGeo.translate(0, segmentLength / 2, 0); // Origin at base
+          
+           // We use two instanced meshes: one for alive leaves, one for dead drooping leaves
+           const leavesInstanced = new THREE.InstancedMesh(segmentGeo, leafMat, numLeaves * segmentsPerLeaf);
+           leavesInstanced.castShadow = true;
+           leavesInstanced.receiveShadow = true;
+           louluGroup.add(leavesInstanced);
+
+
+           const deadLeavesInstanced = new THREE.InstancedMesh(segmentGeo, deadLeafMat, numDeadLeaves * segmentsPerLeaf);
+           deadLeavesInstanced.castShadow = true;
+           louluGroup.add(deadLeavesInstanced);
+
+
+           let globalLeafIdx = 0;
+           let globalDeadIdx = 0;
+
+
+           const totalLeaves = numLeaves + numDeadLeaves;
+
+
+           for (let i = 0; i < totalLeaves; i++) {
+               const isDead = i < numDeadLeaves;
+              
+               // Progress from bottom (dead) to top (newest)
+               const tVal = isDead ? (i / numDeadLeaves) : ((i - numDeadLeaves) / numLeaves);
+              
+               // Golden angle phyllotaxis for natural spiraling arrangement
+               const angle = i * 2.39996;
+               const outDir = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+              
+               // Vertical direction:
+               // Dead leaves droop down (-Y). Oldest alive point outward. Newest alive point up (+Y).
+               let verticalDir;
+               if (isDead) verticalDir = -1.5 + Math.random() * 0.5; // Drooping
+               else verticalDir = THREE.MathUtils.lerp(-0.3, 1.8, tVal); // Sweeping from out to up
+
+
+               const stalkEndDir = outDir.clone().add(new THREE.Vector3(0, verticalDir, 0)).normalize();
+               const stalkLength = isDead ? (0.8 + Math.random() * 0.4) : (1.2 + tVal * 0.5);
+              
+               // Position leaf base near the top of the trunk
+               const baseHeight = isDead
+                   ? (trunkHeight - 0.5 + Math.random() * 0.3)
+                   : (trunkHeight - 0.2 + tVal * 0.4);
+              
+               const p0 = new THREE.Vector3(0, baseHeight, 0);
+              
+               // Control points for the thick leaf stalk (petiole)
+               const p1 = p0.clone().add(outDir.clone().multiplyScalar(stalkLength * 0.4)).add(new THREE.Vector3(0, isDead ? -0.2 : 0.5, 0));
+               const p2 = p0.clone().add(stalkEndDir.clone().multiplyScalar(stalkLength));
+              
+               const stalkCurve = new THREE.QuadraticBezierCurve3(p0, p1, p2);
+              
+               // Generate Stalk Mesh
+               const stalkGeo = new THREE.TubeGeometry(stalkCurve, 12, 0.035, 6, false);
+               const stalkMesh = new THREE.Mesh(stalkGeo, isDead ? deadStalkMat : stalkMat);
+               stalkMesh.castShadow = true;
+               louluGroup.add(stalkMesh);
+
+
+               // Fan Leaf Generation (Clustering segments)
+               const tangent = stalkCurve.getTangentAt(1).normalize();
+               const up = new THREE.Vector3(0, 1, 0);
+               // Calculate local axes for the fan spread
+               const binormal = new THREE.Vector3().crossVectors(tangent, up).normalize();
+               const normal = new THREE.Vector3().crossVectors(binormal, tangent).normalize();
+
+
+               for (let s = 0; s < segmentsPerLeaf; s++) {
+                   // Spread angle from -75 degrees to +75 degrees to form the rounded fan
+                   const spreadFrac = s / (segmentsPerLeaf - 1);
+                   const spreadAngle = THREE.MathUtils.lerp(-Math.PI * 0.42, Math.PI * 0.42, spreadFrac);
+                  
+                   // Rotate the outward direction around the stalk's normal vector
+                   const dir = tangent.clone().applyAxisAngle(normal, spreadAngle);
+                  
+                   // Add natural droop and structural folds (palmate leaves are folded like an accordion)
+                   const outerDroop = Math.abs(spreadAngle) * (isDead ? 1.0 : 0.4); // Edges droop more
+                   const foldZigZag = (s % 2 === 0 ? 0.05 : -0.05); // Accordion fold
+                  
+                   dir.applyAxisAngle(binormal, -outerDroop + foldZigZag);
+                  
+                   dummy.position.copy(p2);
+                   dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+                  
+                   // Scale to flatten the segment and vary lengths slightly for a natural edge
+                   const lengthScale = 0.8 + Math.pow(Math.sin(spreadFrac * Math.PI), 0.5) * 0.3 + (Math.random() * 0.1);
+                   dummy.scale.set(1, lengthScale, 0.15); // Z scaled to 0.15 flattens it
+                   dummy.updateMatrix();
+
+
+                   if (isDead) {
+                       deadLeavesInstanced.setMatrixAt(globalDeadIdx++, dummy.matrix);
+                   } else {
+                       // Vary green color based on age (tVal) and random variance
+                       const hue = 0.28 + Math.random() * 0.03;
+                       const sat = 0.5 + tVal * 0.2;
+                       const light = 0.25 + tVal * 0.15;
+                       colorHelper.setHSL(hue, sat, light);
+                      
+                       leavesInstanced.setMatrixAt(globalLeafIdx, dummy.matrix);
+                       leavesInstanced.setColorAt(globalLeafIdx, colorHelper);
+                       globalLeafIdx++;
+                   }
+               }
+           }
+
+
+           leavesInstanced.instanceMatrix.needsUpdate = true;
+           leavesInstanced.instanceColor.needsUpdate = true;
+           deadLeavesInstanced.instanceMatrix.needsUpdate = true;
+
+
+           // --- 4. HANGING FRUIT CLUSTERS (Inflorescence) ---
+           // Loulu palms have branched stalks with small fruits hanging below the leaves
+           const fruitGeo = new THREE.SphereGeometry(0.04, 8, 8);
+           const fruitInstanced = new THREE.InstancedMesh(fruitGeo, fruitMat, fruitStalks * fruitsPerStalk);
+           fruitInstanced.castShadow = true;
+           louluGroup.add(fruitInstanced);
+
+
+           let globalFruitIdx = 0;
+
+
+           for(let fs = 0; fs < fruitStalks; fs++) {
+               const angle = (fs / fruitStalks) * Math.PI * 2 + Math.random();
+               const outDir = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+              
+               // Main fruit stalk originating from crown, drooping downwards
+               const p0 = new THREE.Vector3(0, trunkHeight - 0.4, 0);
+               const p1 = p0.clone().add(outDir.clone().multiplyScalar(0.6)).add(new THREE.Vector3(0, 0.2, 0));
+               const p2 = p0.clone().add(outDir.clone().multiplyScalar(0.8)).add(new THREE.Vector3(0, -1.2, 0)); // Hangs down
+              
+               const fStalkCurve = new THREE.QuadraticBezierCurve3(p0, p1, p2);
+               const fStalkGeo = new THREE.TubeGeometry(fStalkCurve, 16, 0.02, 6, false);
+               const fStalkMesh = new THREE.Mesh(fStalkGeo, deadStalkMat);
+               fStalkMesh.castShadow = true;
+               louluGroup.add(fStalkMesh);
+
+
+               // Cluster fruits along the downward hanging portion
+               for(let f = 0; f < fruitsPerStalk; f++) {
+                   const t = 0.4 + Math.random() * 0.6; // Mostly on the bottom half
+                   const pos = fStalkCurve.getPointAt(t);
+                  
+                   // Scatter radially around the stalk
+                   const rAngle = Math.random() * Math.PI * 2;
+                   const rDist = Math.random() * 0.12;
+                   const offset = new THREE.Vector3(Math.cos(rAngle)*rDist, (Math.random()-0.5)*0.1, Math.sin(rAngle)*rDist);
+                  
+                   dummy.position.copy(pos).add(offset);
+                   dummy.scale.setScalar(0.7 + Math.random() * 0.5);
+                   dummy.updateMatrix();
+                  
+                   fruitInstanced.setMatrixAt(globalFruitIdx++, dummy.matrix);
+               }
+           }
+           fruitInstanced.instanceMatrix.needsUpdate = true;
+
+
+           return louluGroup;
+       }
+
+
+       // ==========================================
+       // SCENE SETUP & PREVIEW ENVIRONMENT
+       // ==========================================
+
+
+       const container = document.getElementById('canvas-container');
+       const scene = new THREE.Scene();
+       scene.fog = new THREE.FogExp2(0xd4f0ff, 0.02); // Match background
+
+
+       const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+       camera.position.set(12, 6, 12);
+
+
+       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+       renderer.setSize(window.innerWidth, window.innerHeight);
+       renderer.setPixelRatio(window.devicePixelRatio);
+       renderer.shadowMap.enabled = true;
+       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+       container.appendChild(renderer.domElement);
+
+
+       const controls = new THREE.OrbitControls(camera, renderer.domElement);
+       controls.enableDamping = true;
+       controls.dampingFactor = 0.05;
+       controls.target.set(0, 5.0, 0); // Focus on the upper trunk/crown
+
+
+       // --- LIGHTING ---
+       // Warm bounce light from the ground
+       const ambientLight = new THREE.HemisphereLight(0xffffff, 0x8f7a63, 0.6);
+       scene.add(ambientLight);
+
+
+       // Strong directional sunlight to cast sharp palm shadows
+       const dirLight = new THREE.DirectionalLight(0xfffae6, 1.4);
+       dirLight.position.set(8, 15, 6);
+       dirLight.castShadow = true;
+       dirLight.shadow.camera.top = 10;
+       dirLight.shadow.camera.bottom = -10;
+       dirLight.shadow.camera.left = -10;
+       dirLight.shadow.camera.right = 10;
+       dirLight.shadow.camera.near = 0.1;
+       dirLight.shadow.camera.far = 40;
+       dirLight.shadow.mapSize.width = 2048; // High res for fine leaf shadows
+       dirLight.shadow.mapSize.height = 2048;
+       dirLight.shadow.bias = -0.0005; // Prevent shadow acne
+       scene.add(dirLight);
+
+
+       // --- ENVIRONMENT ---
+       // Sandy/soil ground plane to catch shadows
+       const groundGeo = new THREE.PlaneGeometry(60, 60);
+       const groundMat = new THREE.MeshStandardMaterial({
+           color: 0x9c8973, // Dry coastal soil
+           roughness: 1.0,
+           metalness: 0.0
+       });
+       const ground = new THREE.Mesh(groundGeo, groundMat);
+       ground.rotation.x = -Math.PI / 2;
+       ground.receiveShadow = true;
+       scene.add(ground);
+
+
+       // Add some small scattered rocks/debris at base
+       const rockGeo = new THREE.DodecahedronGeometry(0.3, 1);
+       const rockMat = new THREE.MeshStandardMaterial({ color: 0x827e78, roughness: 0.9 });
+       for(let i = 0; i < 10; i++) {
+           const rock = new THREE.Mesh(rockGeo, rockMat);
+           const dist = 0.6 + Math.random() * 3.0;
+           const angle = Math.random() * Math.PI * 2;
+           rock.position.set(Math.cos(angle)*dist, -0.1, Math.sin(angle)*dist);
+           rock.rotation.set(Math.random(), Math.random(), Math.random());
+           rock.scale.set(1, Math.random()*0.5 + 0.3, 1);
+           rock.castShadow = true;
+           rock.receiveShadow = true;
+           scene.add(rock);
+       }
+
+
+       // --- GENERATE AND ADD LOULU ---
+       console.log("Generating Procedural Loulu...");
+       const louluPlant = createLoulu();
+       scene.add(louluPlant);
+
+
+       // --- ANIMATION LOOP ---
+       function animate() {
+           requestAnimationFrame(animate);
+           controls.update();
+           renderer.render(scene, camera);
+       }
+
+
+       // Handle Window Resize
+       window.addEventListener('resize', () => {
+           camera.aspect = window.innerWidth / window.innerHeight;
+           camera.updateProjectionMatrix();
+           renderer.setSize(window.innerWidth, window.innerHeight);
+       });
+
+
+       // Start render
+       animate();
+
+
+   </script>
+</body>
+</html>
+

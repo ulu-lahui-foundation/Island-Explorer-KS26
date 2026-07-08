@@ -138,8 +138,10 @@ export function PlantPreview({ plantId, className = "" }: { plantId: string; cla
     return () => {
       observer.disconnect();
       teardown();
-      // Clean up the restore blocker on unmount
-      unblockRestore();
+      // Note: intentionally do NOT unblockRestore() here.
+      // The blocker must outlive the dispose call so it can intercept any
+      // deferred webglcontextrestored event that fires on the now-dead renderer.
+      // The canvas is unmounting, so the listener will be GC'd with it.
     };
   }, [plantId]);
 
