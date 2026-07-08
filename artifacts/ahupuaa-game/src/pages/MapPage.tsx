@@ -1414,7 +1414,7 @@ export function MapPage() {
           cameraTargetRef.current = {
             target: center,
             distance: dist,
-            height: -dist * 0.35, // slight low angle
+            height: 0, // head-on: camera at same Y as plant center
             active: true,
           };
           setSelectedPlantIdx(i);
@@ -1604,23 +1604,45 @@ export function MapPage() {
     setSelectedPlantIdx(null);
   };
 
-  // Minimal button shown while zoomed in on a plant
-  const plantDetailOverlay = selectedPlant && cameraTargetRef.current?.active ? (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.8 }}
-      transition={{ type: "spring", damping: 20, stiffness: 260 }}
-      className="absolute top-4 right-4 z-[200]"
-    >
-      <button
-        onClick={handleDigUp}
-        className="px-4 py-2 rounded-full text-sm font-bold shadow-xl transition-transform active:scale-90"
-        style={{ background: "#b94040", color: "#fff", border: "2.5px solid rgba(255,255,255,0.5)", whiteSpace: "nowrap" }}
+  const plantNameLabel = selectedPlant && cameraTargetRef.current?.active
+    ? PLANT_DATABASE.find(p => p.id === selectedPlant.plantId)
+    : null;
+
+  // Zoomed-in UI: name at top center + Dig Up at top right
+  const plantDetailOverlay = selectedPlant && cameraTargetRef.current?.active && plantNameLabel ? (
+    <>
+      {/* Name label — top center */}
+      <motion.div
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -12 }}
+        transition={{ type: "spring", damping: 20, stiffness: 260 }}
+        className="absolute top-4 left-1/2 -translate-x-1/2 z-[200]"
       >
-        Dig Up
-      </button>
-    </motion.div>
+        <div
+          className="px-5 py-2 rounded-full text-sm font-bold shadow-xl whitespace-nowrap"
+          style={{ background: "rgba(246,241,231,0.95)", color: "#26342F", border: "2px solid rgba(47,111,78,0.2)" }}
+        >
+          {plantNameLabel.name}
+        </div>
+      </motion.div>
+      {/* Dig Up button — top right */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.8 }}
+        transition={{ type: "spring", damping: 20, stiffness: 260 }}
+        className="absolute top-4 right-4 z-[200]"
+      >
+        <button
+          onClick={handleDigUp}
+          className="px-4 py-2 rounded-full text-sm font-bold shadow-xl transition-transform active:scale-90"
+          style={{ background: "#b94040", color: "#fff", border: "2.5px solid rgba(255,255,255,0.5)", whiteSpace: "nowrap" }}
+        >
+          Dig Up
+        </button>
+      </motion.div>
+    </>
   ) : null;
 
   /* ── 2D fallback (no WebGL) ── */
