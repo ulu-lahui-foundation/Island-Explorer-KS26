@@ -884,6 +884,211 @@ export function MapPage() {
       return fernGroup;
     }
 
+    // ── Kalo (Taro) procedural plant ──
+    function createKaloPlant() {
+      const plantGroup = new THREE.Group();
+      const matCorm = new THREE.MeshStandardMaterial({ color: 0x4a3225, roughness: 0.9, metalness: 0.05 });
+      const matRoot = new THREE.MeshStandardMaterial({ color: 0x7a5c43, roughness: 0.95, metalness: 0.0 });
+      const matLeafFlesh = new THREE.MeshStandardMaterial({ color: 0x366e2d, roughness: 0.85, metalness: 0.05, side: THREE.DoubleSide });
+      const matVein = new THREE.MeshStandardMaterial({ color: 0x5a9e45, roughness: 0.7, metalness: 0.0 });
+      const sphereGeo = new THREE.SphereGeometry(1, 16, 12);
+      const cylinderGeo = new THREE.CylinderGeometry(1, 1, 1, 8);
+      cylinderGeo.translate(0, 0.5, 0);
+
+      // Corm
+      const cormGroup = new THREE.Group();
+      const numCormSlices = 10;
+      const cormBaseHeight = 0.5;
+      for (let i = 0; i < numCormSlices; i++) {
+        const t = i / (numCormSlices - 1);
+        const radius = Math.sin(t * Math.PI) * 2.5 + 0.8;
+        const sliceGeo = new THREE.CylinderGeometry(radius * 0.9, radius, cormBaseHeight, 16);
+        const slice = new THREE.Mesh(sliceGeo, matCorm);
+        slice.position.set((Math.random() - 0.5) * 0.2, i * cormBaseHeight * 0.8, (Math.random() - 0.5) * 0.2);
+        slice.castShadow = true;
+        slice.receiveShadow = true;
+        cormGroup.add(slice);
+      }
+
+      // Roots
+      const numRoots = 45;
+      for (let i = 0; i < numRoots; i++) {
+        const rootGroup = new THREE.Group();
+        const phi = Math.PI / 2 + Math.random() * (Math.PI / 2);
+        const theta = Math.random() * Math.PI * 2;
+        const radiusC = 2.0;
+        let currP = new THREE.Vector3(
+          radiusC * Math.sin(phi) * Math.cos(theta),
+          (radiusC * Math.cos(phi)) + (cormBaseHeight * 3),
+          radiusC * Math.sin(phi) * Math.sin(theta)
+        );
+        let currDir = currP.clone().normalize();
+        currDir.y -= 0.5;
+        currDir.normalize();
+        const numSegments = 4 + Math.floor(Math.random() * 3);
+        let currentThickness = 0.08;
+        for (let k = 0; k < numSegments; k++) {
+          const segLen = 0.4 + Math.random() * 0.5;
+          const nextP = currP.clone().add(currDir.clone().multiplyScalar(segLen));
+          const nextThickness = currentThickness * 0.7;
+          const rGeo = new THREE.CylinderGeometry(nextThickness, currentThickness, segLen, 5);
+          const rMesh = new THREE.Mesh(rGeo, matRoot);
+          rMesh.position.copy(currP.clone().lerp(nextP, 0.5));
+          rMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), currDir);
+          rootGroup.add(rMesh);
+          currP = nextP;
+          currentThickness = nextThickness;
+          currDir.add(new THREE.Vector3((Math.random()-0.5)*0.8, (Math.random()-0.5)*0.4, (Math.random()-0.5)*0.8)).normalize();
+        }
+        cormGroup.add(rootGroup);
+      }
+      plantGroup.add(cormGroup);
+
+      // Leaf builder
+      function buildTaroLeaf(length: number, width: number) {
+        const leafGroup = new THREE.Group();
+        const heightLobe = length * 0.35;
+        const numBodySteps = 16;
+        const numLobeSteps = 8;
+        const getZOffset = (x: number, y: number) => -0.04 * (x * x + Math.pow(Math.max(0, -y), 1.3));
+
+        for (let i = 0; i <= numBodySteps; i++) {
+          const t = i / numBodySteps;
+          const y = -t * length;
+          const widthF = (1 - Math.pow(t, 1.4)) * width;
+          const zOffset = getZOffset(0, y) + i * 0.002;
+          const flesh = new THREE.Mesh(sphereGeo, matLeafFlesh);
+          flesh.position.set(0, y, zOffset);
+          flesh.scale.set(widthF * 0.5, (length / numBodySteps) * 1.8, 0.06);
+          flesh.castShadow = true;
+          flesh.receiveShadow = true;
+          leafGroup.add(flesh);
+          if (i < numBodySteps) {
+            const nextY = -((i + 1) / numBodySteps) * length;
+            const nextZ = getZOffset(0, nextY);
+            const veinLen = y - nextY;
+            const vRadius1 = 0.18 * (1 - t) + 0.03;
+            const vRadius2 = 0.18 * (1 - ((i + 1) / numBodySteps)) + 0.03;
+            const vein = new THREE.Mesh(new THREE.CylinderGeometry(vRadius2, vRadius1, veinLen * 1.1, 6), matVein);
+            vein.position.set(0, (y + nextY) / 2, (zOffset + nextZ) / 2 + 0.08);
+            leafGroup.add(vein);
+          }
+          if (i > 1 && i < numBodySteps - 2 && i % 2 === 0) {
+            const veinSpread = widthF * 0.85;
+            const latLen = Math.sqrt(Math.pow(veinSpread / 2, 2) + Math.pow(length * 0.15, 2));
+            const vThickness = 0.06 * (1 - t) + 0.02;
+            const leftVein = new THREE.Mesh(new THREE.CylinderGeometry(0.01, vThickness, latLen, 5), matVein);
+            leftVein.position.set(-veinSpread / 4, y - length * 0.075, zOffset + 0.06);
+            leftVein.rotation.z = Math.atan2(length * 0.15, veinSpread / 2);
+            leafGroup.add(leftVein);
+            const rightVein = new THREE.Mesh(new THREE.CylinderGeometry(0.01, vThickness, latLen, 5), matVein);
+            rightVein.position.set(veinSpread / 4, y - length * 0.075, zOffset + 0.06);
+            rightVein.rotation.z = -Math.atan2(length * 0.15, veinSpread / 2);
+            leafGroup.add(rightVein);
+          }
+        }
+
+        for (const side of [-1, 1]) {
+          for (let i = 0; i <= numLobeSteps; i++) {
+            const t = i / numLobeSteps;
+            const x = side * t * width * 0.42;
+            const y = t * heightLobe;
+            const widthF = (1 - Math.pow(t, 1.8)) * (width * 0.45);
+            const flesh = new THREE.Mesh(sphereGeo, matLeafFlesh);
+            const zOffset = getZOffset(x, y) + i * 0.002 - 0.02;
+            flesh.position.set(x, y, zOffset);
+            flesh.rotation.z = side * -Math.PI / 5 * t;
+            flesh.scale.set(widthF, (heightLobe / numLobeSteps) * 2.0, 0.06);
+            flesh.castShadow = true;
+            flesh.receiveShadow = true;
+            leafGroup.add(flesh);
+            if (i < numLobeSteps) {
+              const nextT = (i + 1) / numLobeSteps;
+              const nextX = side * nextT * width * 0.42;
+              const nextY = nextT * heightLobe;
+              const vLen = Math.sqrt((nextX - x)**2 + (nextY - y)**2);
+              const vRadius1 = 0.12 * (1 - t) + 0.02;
+              const vRadius2 = 0.12 * (1 - nextT) + 0.02;
+              const vein = new THREE.Mesh(new THREE.CylinderGeometry(vRadius2, vRadius1, vLen * 1.1, 6), matVein);
+              vein.position.set((x + nextX) / 2, (y + nextY) / 2, zOffset + 0.08);
+              vein.rotation.z = Math.atan2(y - nextY, x - nextX) + Math.PI / 2;
+              leafGroup.add(vein);
+            }
+          }
+        }
+        return leafGroup;
+      }
+
+      // Stalks and leaves
+      const numStalks = 6 + Math.floor(Math.random() * 3);
+      const topOfCorm = numCormSlices * cormBaseHeight * 0.8;
+      for (let i = 0; i < numStalks; i++) {
+        const isCenterSprout = (i === 0);
+        const angle = (i / numStalks) * Math.PI * 2 + (Math.random() * 0.5);
+        const stalkHeight = isCenterSprout ? 28 : 20 + Math.random() * 10;
+        const stalkLean = isCenterSprout ? 2 : 12 + Math.random() * 8;
+        const p0 = new THREE.Vector3(Math.cos(angle) * 0.5, topOfCorm, Math.sin(angle) * 0.5);
+        const p1 = new THREE.Vector3(Math.cos(angle) * stalkLean * 0.5, topOfCorm + stalkHeight * 0.4, Math.sin(angle) * stalkLean * 0.5);
+        const p2 = new THREE.Vector3(Math.cos(angle) * stalkLean, topOfCorm + stalkHeight, Math.sin(angle) * stalkLean);
+        const curve = new THREE.QuadraticBezierCurve3(p0, p1, p2);
+        const stalkSegments = 12;
+        const stalkGroup = new THREE.Group();
+        for (let j = 0; j < stalkSegments; j++) {
+          const t1 = j / stalkSegments;
+          const t2 = (j + 1) / stalkSegments;
+          const pt1 = curve.getPoint(t1);
+          const pt2 = curve.getPoint(t2);
+          const radius1 = THREE.MathUtils.lerp(1.8, 0.4, t1);
+          const radius2 = THREE.MathUtils.lerp(1.8, 0.4, t2);
+          const dist = pt1.distanceTo(pt2);
+          const stalkMat = new THREE.MeshStandardMaterial({
+            color: new THREE.Color().lerpColors(new THREE.Color(0x6b4f62), new THREE.Color(0x84b55e), t1),
+            roughness: 0.6,
+            metalness: 0.05
+          });
+          const segGeo = new THREE.CylinderGeometry(radius2, radius1, dist * 1.05, 12);
+          const seg = new THREE.Mesh(segGeo, stalkMat);
+          seg.position.copy(pt1.clone().lerp(pt2, 0.5));
+          const dir = pt2.clone().sub(pt1).normalize();
+          seg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+          if (j < 3) seg.scale.set(1.2, 1, 0.8);
+          seg.castShadow = true;
+          seg.receiveShadow = true;
+          stalkGroup.add(seg);
+        }
+        plantGroup.add(stalkGroup);
+
+        if (isCenterSprout) {
+          const sproutGroup = new THREE.Group();
+          sproutGroup.position.copy(p2);
+          const sproutDir = curve.getTangent(1).normalize();
+          sproutGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), sproutDir);
+          const sMesh = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.05, 0.4, 8, 8),
+            new THREE.MeshStandardMaterial({ color: 0x98d46a, roughness: 0.7 })
+          );
+          sMesh.position.y = 4;
+          sproutGroup.add(sMesh);
+          plantGroup.add(sproutGroup);
+        } else {
+          const leafLength = 16 + Math.random() * 6;
+          const leafWidth = 10 + Math.random() * 5;
+          const leaf = buildTaroLeaf(leafLength, leafWidth);
+          leaf.position.copy(p2);
+          const stalkTangent = curve.getTangent(1).normalize();
+          const droopVector = new THREE.Vector3(0, -1.2, 0);
+          const targetPos = p2.clone().add(stalkTangent).add(droopVector);
+          leaf.lookAt(targetPos);
+          leaf.rotateX(-Math.PI / 2);
+          leaf.rotateY((Math.random() - 0.5) * 0.4);
+          plantGroup.add(leaf);
+        }
+      }
+
+      plantGroup.position.y = -topOfCorm * 0.5;
+      return plantGroup;
+    }
+
     const spawnPlant3D = (plantId: string, position: THREE.Vector3) => {
       const group = new THREE.Group();
       group.position.copy(position);
@@ -895,17 +1100,10 @@ export function MapPage() {
       const flowerMat = new THREE.MeshStandardMaterial({ color: 0xE91E63, roughness: 0.6, flatShading: true });
 
       if (plantId === "kalo" || plantId === "taro") {
-        // Heart-shaped leaves
-        for (let i = 0; i < 3; i++) {
-          const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), plantMat);
-          leaf.scale.set(1, 0.1, 1.2);
-          leaf.position.set(Math.cos((i / 3) * Math.PI * 2) * 0.3, 0.4 + i * 0.1, Math.sin((i / 3) * Math.PI * 2) * 0.3);
-          leaf.rotation.x = -0.3;
-          group.add(leaf);
-        }
-        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.4), plantMat);
-        stem.position.y = 0.2;
-        group.add(stem);
+        // Kalo (Taro) procedural plant with corm, roots, and sagittate leaves
+        const kalo = createKaloPlant();
+        group.add(kalo);
+        group.scale.set(0.35, 0.35, 0.35);
       } else if (plantId === "kukui") {
         // Canopy tree
         const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.5, 6), trunkMat);
