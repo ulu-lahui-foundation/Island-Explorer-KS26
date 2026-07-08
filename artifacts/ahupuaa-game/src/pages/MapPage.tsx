@@ -110,7 +110,7 @@ export function MapPage() {
     controls.dampingFactor = 0.05;
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
     controls.minDistance = 15;
-    controls.maxDistance = 1200;
+    controls.maxDistance = 250;
     controls.zoomSpeed = 5;
     controls.minAzimuthAngle = -Math.PI / 2.2;
     controls.maxAzimuthAngle = Math.PI / 2.2;
