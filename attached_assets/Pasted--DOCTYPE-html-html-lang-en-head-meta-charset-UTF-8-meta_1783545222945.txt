@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Procedural Limu Kohu (Asparagopsis taxiformis)</title>
+   <style>
+       body {
+           margin: 0;
+           overflow: hidden;
+           background-color: #051a2e; /* Deep ocean blue backdrop */
+           font-family: sans-serif;
+       }
+       #info {
+           position: absolute;
+           top: 15px;
+           left: 15px;
+           color: rgba(255, 255, 255, 0.8);
+           pointer-events: none;
+           background: rgba(0, 0, 0, 0.4);
+           padding: 15px;
+           border-radius: 8px;
+           backdrop-filter: blur(4px);
+       }
+       h1 { margin: 0 0 5px 0; font-size: 1.2rem; color: #d85b75; }
+       p { margin: 0; font-size: 0.9rem; }
+   </style>
+   <!-- Use Import Maps for modern Three.js loading -->
+   <script type="importmap">
+       {
+           "imports": {
+               "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+               "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+           }
+       }
+   </script>
+</head>
+<body>
+   <div id="info">
+       <h1>Limu Kohu (Asparagopsis taxiformis)</h1>
+       <p>Procedurally generated red marine algae.</p>
+       <p style="font-size: 0.8rem; margin-top: 5px; opacity: 0.7;">Left Click: Rotate | Scroll: Zoom</p>
+   </div>
+
+
+   <script type="module">
+       import * as THREE from 'three';
+       import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+
+       // ==========================================
+       // 1. SCENE SETUP
+       // ==========================================
+       const scene = new THREE.Scene();
+       scene.fog = new THREE.FogExp2(0x051a2e, 0.08); // Underwater depth effect
+
+
+       const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+       camera.position.set(0, 4, 11);
+
+
+       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+       renderer.setSize(window.innerWidth, window.innerHeight);
+       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+       document.body.appendChild(renderer.domElement);
+
+
+       const controls = new OrbitControls(camera, renderer.domElement);
+       controls.enableDamping = true;
+       controls.dampingFactor = 0.05;
+       controls.target.set(0, 1.5, 0);
+
+
+       // Lighting to enhance the organic, underwater feel
+       const ambientLight = new THREE.AmbientLight(0x204060, 2.5); // Cool ambient
+       scene.add(ambientLight);
+
+
+       const directionalLight = new THREE.DirectionalLight(0xffeedd, 3.0);
+       directionalLight.position.set(5, 10, 3);
+       scene.add(directionalLight);
+
+
+       // A warm point light to make the red/pink hues pop
+       const pointLight = new THREE.PointLight(0xff5577, 4.0, 10);
+       pointLight.position.set(0, 2, 2);
+       scene.add(pointLight);
+
+
+       // ==========================================
+       // 2. PROCEDURAL GENERATION FUNCTION
+       // ==========================================
+       /**
+        * Procedurally generates a cluster of Limu Kohu.
+        * Returns a self-contained THREE.Group.
+        */
+       function createLimuKohu() {
+           const limuGroup = new THREE.Group();
+
+
+           // Color Palette
+           const colorRock = new THREE.Color(0x2a3036);
+           const colorStem = new THREE.Color(0x5a0b18); // Dark maroon base
+           const colorBaseFluff = new THREE.Color(0x8a1329); // Deep crimson
+           const colorTipFluff = new THREE.Color(0xeb6e8b); // Soft pinkish tips
+
+
+           // Shared material for all plant parts (highly organic, slightly matte)
+           const plantMaterial = new THREE.MeshStandardMaterial({
+               roughness: 0.8,
+               metalness: 0.1,
+               side: THREE.DoubleSide
+           });
+
+
+           // --- A. Generate Base Rock (Attachment point) ---
+           const rockGeo = new THREE.IcosahedronGeometry(0.8, 4);
+           const posAttr = rockGeo.attributes.position;
+           // Add noise to the rock
+           for (let i = 0; i < posAttr.count; i++) {
+               const vec = new THREE.Vector3().fromBufferAttribute(posAttr, i);
+               const noise = 1 + (Math.random() - 0.5) * 0.3;
+               vec.multiplyScalar(noise);
+               // Flatten the bottom
+               if (vec.y < -0.3) vec.y = -0.3;
+               posAttr.setXYZ(i, vec.x, vec.y, vec.z);
+           }
+           rockGeo.computeVertexNormals();
+          
+           const rockMat = new THREE.MeshStandardMaterial({
+               color: colorRock,
+               roughness: 0.9,
+               metalness: 0.2
+           });
+           const rock = new THREE.Mesh(rockGeo, rockMat);
+           rock.position.y = -0.3;
+           limuGroup.add(rock);
+
+
+           // --- B. Generate the Horizontal Rhizome ---
+           // Limu Kohu grows from a creeping runner base.
+           const rhizomeCurve = new THREE.CatmullRomCurve3([
+               new THREE.Vector3(-0.6, 0.1, -0.2),
+               new THREE.Vector3(-0.2, 0.15, 0.3),
+               new THREE.Vector3(0.3, 0.1, 0.1),
+               new THREE.Vector3(0.7, 0.05, -0.2)
+           ]);
+           const rhizomeGeo = new THREE.TubeGeometry(rhizomeCurve, 20, 0.05, 6, false);
+           const rhizomeMat = plantMaterial.clone();
+           rhizomeMat.color = colorStem;
+           const rhizome = new THREE.Mesh(rhizomeGeo, rhizomeMat);
+           limuGroup.add(rhizome);
+
+
+           // --- C. Create the Bent Branch Geometry for Instancing ---
+           // To create the "fluffy" look efficiently, we use one slightly curved cylinder geometry
+           // that gets instanced thousands of times.
+           const bentBranchGeo = new THREE.CylinderGeometry(0.003, 0.015, 1, 4, 3);
+           bentBranchGeo.translate(0, 0.5, 0); // Move pivot to base
+           bentBranchGeo.rotateX(Math.PI / 2); // Orient along Z-axis for lookAt() functionality
+          
+           // Apply a permanent gravity droop/curve to the geometry
+           const bPos = bentBranchGeo.attributes.position;
+           for (let i = 0; i < bPos.count; i++) {
+               const z = bPos.getZ(i);
+               const y = bPos.getY(i);
+               // The further along Z (length), the more it bends down along Y
+               bPos.setY(i, y - (z * z * 0.3));
+           }
+           bentBranchGeo.computeVertexNormals();
+
+
+           // --- D. Generate Upright Stalks (The "Christmas Trees") ---
+           const numStalks = 6 + Math.floor(Math.random() * 3);
+          
+           for (let i = 0; i < numStalks; i++) {
+               const stalkGroup = new THREE.Group();
+              
+               // 1. Determine spawn point along the rhizome
+               const tRhizome = (i / (numStalks - 1)) * 0.8 + 0.1; // Space them out
+               const spawnPos = rhizomeCurve.getPoint(tRhizome);
+              
+               // 2. Create the curved main stem for this stalk
+               const height = 2.5 + Math.random() * 1.5;
+               const endPos = new THREE.Vector3(
+                   spawnPos.x + (Math.random() - 0.5) * 1.2,
+                   spawnPos.y + height,
+                   spawnPos.z + (Math.random() - 0.5) * 1.2
+               );
+               const midPos = new THREE.Vector3(
+                   (spawnPos.x + endPos.x) / 2 + (Math.random() - 0.5) * 0.5,
+                   (spawnPos.y + endPos.y) / 2,
+                   (spawnPos.z + endPos.z) / 2 + (Math.random() - 0.5) * 0.5
+               );
+
+
+               const stalkCurve = new THREE.QuadraticBezierCurve3(spawnPos, midPos, endPos);
+               // Thickest at base, tapers slightly
+               const stalkGeo = new THREE.TubeGeometry(stalkCurve, 20, 0.035, 6, false);
+               const stalkMesh = new THREE.Mesh(stalkGeo, rhizomeMat);
+               stalkGroup.add(stalkMesh);
+
+
+               // 3. Generate the fluffy plume (branchlets) via InstancedMesh
+               const whorls = 300; // Number of height steps along the stalk
+               const branchesPerWhorl = 6; // Number of tiny branches per step
+               const totalBranches = whorls * branchesPerWhorl;
+              
+               const instancedFluff = new THREE.InstancedMesh(bentBranchGeo, plantMaterial, totalBranches);
+               const dummy = new THREE.Object3D();
+               let instanceIdx = 0;
+
+
+               for (let j = 0; j < whorls; j++) {
+                   const t = j / whorls;
+                  
+                   // The Profile Envelope: Shape of the "Christmas tree".
+                   // Bare at the very bottom, widening out, then tapering to a fine point at top.
+                   let profile = 0;
+                   if (t > 0.05) {
+                       // Taper heavily towards the tip (t=1)
+                       const tipTaper = Math.pow(1 - t, 0.7);
+                       // Ramp up quickly from the bottom
+                       const baseRamp = Math.min(1, (t - 0.05) * 8);
+                       profile = tipTaper * baseRamp;
+                   }
+
+
+                   if (profile === 0) continue; // Skip rendering branches here
+
+
+                   const pos = stalkCurve.getPoint(t);
+                   const tan = stalkCurve.getTangent(t);
+                  
+                   // Color gradient from deep crimson inside/bottom to pinkish outside/top
+                   const gradientFactor = t * 0.6 + Math.random() * 0.4;
+                   const fluffColor = colorBaseFluff.clone().lerp(colorTipFluff, gradientFactor);
+
+
+                   for (let b = 0; b < branchesPerWhorl; b++) {
+                       dummy.position.copy(pos);
+                      
+                       // Align with stalk direction
+                       dummy.lookAt(pos.clone().add(tan));
+                      
+                       // Distribute spirally using the golden ratio for organic packing
+                       const angle = (j * 1.6180339) * Math.PI * 2 + (b / branchesPerWhorl) * Math.PI * 2;
+                       dummy.rotateZ(angle);
+                      
+                       // Pitch outward from the stem
+                       const droopAngle = (Math.PI * 0.35) + (Math.random() * 0.2);
+                       dummy.rotateX(droopAngle);
+                      
+                       // Scale length based on profile envelope and noise
+                       const baseLength = 0.25;
+                       const lenNoise = 1.0 + (Math.random() - 0.5) * 0.4;
+                       const branchLength = baseLength * profile * lenNoise;
+                      
+                       // Apply matrix and scale
+                       dummy.scale.set(1 + Math.random()*0.5, 1 + Math.random()*0.5, branchLength);
+                       dummy.updateMatrix();
+                      
+                       instancedFluff.setMatrixAt(instanceIdx, dummy.matrix);
+                       instancedFluff.setColorAt(instanceIdx, fluffColor);
+                       instanceIdx++;
+                   }
+               }
+              
+               // Trim the active instances to only those actually placed
+               instancedFluff.count = instanceIdx;
+               instancedFluff.instanceMatrix.needsUpdate = true;
+               if (instancedFluff.instanceColor) instancedFluff.instanceColor.needsUpdate = true;
+              
+               stalkGroup.add(instancedFluff);
+               limuGroup.add(stalkGroup);
+           }
+
+
+           // --- E. Optional: Attach an update function for ambient water swaying ---
+           limuGroup.userData.update = (time) => {
+               // Gentle, localized sway based on time
+               const swayIntensity = 0.03;
+               limuGroup.rotation.x = Math.sin(time * 0.5) * swayIntensity;
+               limuGroup.rotation.z = Math.cos(time * 0.3) * swayIntensity;
+           };
+
+
+           return limuGroup;
+       }
+
+
+       // ==========================================
+       // 3. INITIALIZATION & RENDER LOOP
+       // ==========================================
+       const limuClusters = [];
+       const numClusters = 5;
+
+
+       for (let i = 0; i < numClusters; i++) {
+           const limu = createLimuKohu();
+          
+           // Keep the first one central, scatter the rest around it
+           if (i > 0) {
+               const angle = (i / (numClusters - 1)) * Math.PI * 2 + (Math.random() * 0.5);
+               const radius = 1.5 + Math.random() * 1.5;
+               limu.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
+               limu.rotation.y = Math.random() * Math.PI * 2;
+              
+               // Vary the sizes slightly for a natural look
+               const scale = 0.7 + Math.random() * 0.5;
+               limu.scale.set(scale, scale, scale);
+           }
+          
+           scene.add(limu);
+           limuClusters.push(limu);
+       }
+
+
+       const clock = new THREE.Clock();
+
+
+       function animate() {
+           requestAnimationFrame(animate);
+          
+           const elapsedTime = clock.getElapsedTime();
+          
+           // Execute the procedural animation attached to each plant
+           limuClusters.forEach((limu, index) => {
+               if (limu.userData.update) {
+                   // Add an offset so they sway independently
+                   limu.userData.update(elapsedTime + index * 10);
+               }
+           });
+
+
+           controls.update();
+           renderer.render(scene, camera);
+       }
+
+
+       // Handle window resizing
+       window.addEventListener('resize', () => {
+           camera.aspect = window.innerWidth / window.innerHeight;
+           camera.updateProjectionMatrix();
+           renderer.setSize(window.innerWidth, window.innerHeight);
+       });
+
+
+       animate();
+   </script>
+</body>
+</html>
+

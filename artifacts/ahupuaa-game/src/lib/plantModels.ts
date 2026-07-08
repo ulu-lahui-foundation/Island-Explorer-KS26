@@ -163,6 +163,117 @@ export function createNaupakaBush() {
   return bushGroup;
 }
 
+// ── Limu Kohu (Asparagopsis taxiformis) procedural model ──
+export function createLimuKohu() {
+  const limuGroup = new THREE.Group();
+
+  const colorStem     = new THREE.Color(0x5a0b18);
+  const colorBase     = new THREE.Color(0x8a1329);
+  const colorTip      = new THREE.Color(0xeb6e8b);
+  const colorRock     = new THREE.Color(0x2a3036);
+
+  // Rock base (noisy icosahedron)
+  const rockGeo = new THREE.IcosahedronGeometry(0.55, 3);
+  const rPos = rockGeo.attributes.position as THREE.BufferAttribute;
+  for (let i = 0; i < rPos.count; i++) {
+    const v = new THREE.Vector3().fromBufferAttribute(rPos, i);
+    v.multiplyScalar(1 + (Math.random() - 0.5) * 0.3);
+    if (v.y < -0.2) v.y = -0.2;
+    rPos.setXYZ(i, v.x, v.y, v.z);
+  }
+  rockGeo.computeVertexNormals();
+  const rock = new THREE.Mesh(rockGeo, new THREE.MeshStandardMaterial({ color: colorRock, roughness: 0.9, metalness: 0.2 }));
+  rock.position.y = -0.2;
+  limuGroup.add(rock);
+
+  // Rhizome runner
+  const rhizomeCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.5, 0.08, -0.15),
+    new THREE.Vector3(-0.1, 0.12, 0.2),
+    new THREE.Vector3(0.25, 0.08, 0.08),
+    new THREE.Vector3(0.55, 0.04, -0.15),
+  ]);
+  const rhizomeMat = new THREE.MeshStandardMaterial({ color: colorStem, roughness: 0.8, metalness: 0.1, side: THREE.DoubleSide });
+  limuGroup.add(new THREE.Mesh(new THREE.TubeGeometry(rhizomeCurve, 16, 0.04, 5, false), rhizomeMat));
+
+  // Branchlet geometry — tapered drooping cylinder
+  const bentGeo = new THREE.CylinderGeometry(0.002, 0.012, 1, 4, 3);
+  bentGeo.translate(0, 0.5, 0);
+  bentGeo.rotateX(Math.PI / 2);
+  const bPos = bentGeo.attributes.position as THREE.BufferAttribute;
+  for (let i = 0; i < bPos.count; i++) {
+    const z = bPos.getZ(i);
+    bPos.setY(i, bPos.getY(i) - z * z * 0.3);
+  }
+  bentGeo.computeVertexNormals();
+
+  const fluffMat = new THREE.MeshStandardMaterial({ roughness: 0.8, metalness: 0.1, side: THREE.DoubleSide });
+  const dummy = new THREE.Object3D();
+  const colorHelper = new THREE.Color();
+
+  const numStalks  = 4 + Math.floor(Math.random() * 2);
+  const whorls     = 80;
+  const bPerWhorl  = 6;
+
+  for (let i = 0; i < numStalks; i++) {
+    const stalkGroup = new THREE.Group();
+    const tR = (i / (numStalks - 1)) * 0.8 + 0.1;
+    const spawnPos = rhizomeCurve.getPoint(tR);
+    const height = 1.8 + Math.random() * 1.0;
+    const endPos = new THREE.Vector3(
+      spawnPos.x + (Math.random() - 0.5) * 0.9,
+      spawnPos.y + height,
+      spawnPos.z + (Math.random() - 0.5) * 0.9,
+    );
+    const midPos = new THREE.Vector3(
+      (spawnPos.x + endPos.x) / 2 + (Math.random() - 0.5) * 0.4,
+      (spawnPos.y + endPos.y) / 2,
+      (spawnPos.z + endPos.z) / 2 + (Math.random() - 0.5) * 0.4,
+    );
+    const stalkCurve = new THREE.QuadraticBezierCurve3(spawnPos, midPos, endPos);
+    stalkGroup.add(new THREE.Mesh(new THREE.TubeGeometry(stalkCurve, 16, 0.028, 5, false), rhizomeMat));
+
+    const totalInst = whorls * bPerWhorl;
+    const fluff = new THREE.InstancedMesh(bentGeo, fluffMat, totalInst);
+    let idx = 0;
+
+    for (let j = 0; j < whorls; j++) {
+      const t = j / whorls;
+      let profile = 0;
+      if (t > 0.05) {
+        profile = Math.pow(1 - t, 0.7) * Math.min(1, (t - 0.05) * 8);
+      }
+      if (profile === 0) continue;
+
+      const pos = stalkCurve.getPoint(t);
+      const tan = stalkCurve.getTangent(t);
+      const grad = t * 0.6 + Math.random() * 0.4;
+      colorHelper.copy(colorBase).lerp(colorTip, grad);
+
+      for (let b = 0; b < bPerWhorl; b++) {
+        dummy.position.copy(pos);
+        dummy.lookAt(pos.clone().add(tan));
+        dummy.rotateZ((j * 1.6180339 + b / bPerWhorl) * Math.PI * 2);
+        dummy.rotateX(Math.PI * 0.35 + Math.random() * 0.2);
+        const len = 0.25 * profile * (1 + (Math.random() - 0.5) * 0.4);
+        dummy.scale.set(1 + Math.random() * 0.5, 1 + Math.random() * 0.5, len);
+        dummy.updateMatrix();
+        fluff.setMatrixAt(idx, dummy.matrix);
+        fluff.setColorAt(idx, colorHelper);
+        idx++;
+      }
+    }
+
+    fluff.count = idx;
+    fluff.instanceMatrix.needsUpdate = true;
+    if (fluff.instanceColor) fluff.instanceColor.needsUpdate = true;
+    stalkGroup.add(fluff);
+    limuGroup.add(stalkGroup);
+  }
+
+  return limuGroup;
+}
+
 // ── ʻAʻaliʻi (Dodonaea viscosa) procedural model ──
 export function createAalii() {
   const aaliiGroup = new THREE.Group();
@@ -1652,6 +1763,12 @@ export function buildPlantModel(plantId: string): THREE.Group {
     case "lai": {
       const lai = createLai();
       group.add(lai);
+      break;
+    }
+    case "limu": {
+      const limu = createLimuKohu();
+      group.add(limu);
+      group.scale.set(0.6, 0.6, 0.6);
       break;
     }
     default: {
