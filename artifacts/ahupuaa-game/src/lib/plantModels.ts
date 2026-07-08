@@ -163,6 +163,157 @@ export function createNaupakaBush() {
   return bushGroup;
 }
 
+// ── Pōhinahina (Vitex rotundifolia) procedural model ──
+export function createPohinahina() {
+  const pohinahinaGroup = new THREE.Group();
+  const dummy = new THREE.Object3D();
+  const colorHelper = new THREE.Color();
+
+  const numMainStems = 10;
+  const subStemsPerMain = 2;
+  const leafPairsPerUnit = 4;
+
+  const stemMat = new THREE.MeshStandardMaterial({ color: 0x8a8175, roughness: 0.8, metalness: 0.0 });
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x8ba192, roughness: 0.9, metalness: 0.1, side: THREE.DoubleSide });
+  const flowerMat = new THREE.MeshStandardMaterial({ color: 0x826ca3, roughness: 0.6, metalness: 0.0 });
+
+  // Build stems (main + sub-branches)
+  type StemData = { curve: THREE.CatmullRomCurve3; length: number; isMain: boolean };
+  const stems: StemData[] = [];
+
+  for (let i = 0; i < numMainStems; i++) {
+    const angle = (i / numMainStems) * Math.PI * 2 + Math.random() * 0.4;
+    const length = 2.0 + Math.random() * 2.0;
+    const mainCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(Math.cos(angle) * length * 0.3, 0.4 + Math.random() * 0.6, Math.sin(angle) * length * 0.3),
+      new THREE.Vector3(Math.cos(angle) * length * 0.7, 0.3 + Math.random() * 0.4, Math.sin(angle) * length * 0.7),
+      new THREE.Vector3(Math.cos(angle) * length, 0.05 + Math.random() * 0.15, Math.sin(angle) * length),
+    ]);
+    stems.push({ curve: mainCurve, length, isMain: true });
+
+    for (let j = 0; j < subStemsPerMain; j++) {
+      const tStart = 0.2 + (j / subStemsPerMain) * 0.6 + Math.random() * 0.1;
+      const startPt = mainCurve.getPointAt(tStart);
+      const subLen = 1.0 + Math.random() * 1.5;
+      const dir = Math.random() > 0.5 ? 1 : -1;
+      const subAngle = angle + dir * (0.4 + Math.random() * 0.4);
+      stems.push({
+        curve: new THREE.CatmullRomCurve3([
+          startPt,
+          startPt.clone().add(new THREE.Vector3(Math.cos(subAngle) * subLen * 0.5, 0.2 + Math.random() * 0.3, Math.sin(subAngle) * subLen * 0.5)),
+          startPt.clone().add(new THREE.Vector3(Math.cos(subAngle) * subLen, 0.05 + Math.random() * 0.1, Math.sin(subAngle) * subLen)),
+        ]),
+        length: subLen,
+        isMain: false,
+      });
+    }
+  }
+
+  // Render stem tubes
+  stems.forEach(({ curve, isMain }) => {
+    pohinahinaGroup.add(new THREE.Mesh(
+      new THREE.TubeGeometry(curve, 16, isMain ? 0.025 : 0.015, 5, false),
+      stemMat
+    ));
+  });
+
+  // Oval/spoon leaf geometry (deformed cylinder)
+  const leafLength = 0.25;
+  const leafGeo = new THREE.CylinderGeometry(0.01, 0.01, leafLength, 8, 4);
+  leafGeo.translate(0, leafLength / 2, 0);
+  const leafPos = leafGeo.attributes.position as THREE.BufferAttribute;
+  for (let i = 0; i < leafPos.count; i++) {
+    const t = leafPos.getY(i) / leafLength;
+    const widthProfile = Math.sin(t * Math.PI);
+    const x = leafPos.getX(i) * widthProfile * 12.0;
+    let z = leafPos.getZ(i) * 0.1;
+    z += Math.abs(x) * 0.15;
+    z -= Math.sin(t * Math.PI) * 0.05;
+    leafPos.setXYZ(i, x, leafPos.getY(i), z);
+  }
+  leafGeo.computeVertexNormals();
+
+  // Pre-compute total leaf count
+  let totalLeaves = 0;
+  stems.forEach(({ length }) => { totalLeaves += Math.floor(length * leafPairsPerUnit) * 2; });
+
+  const leavesInst = new THREE.InstancedMesh(leafGeo, leafMat, totalLeaves);
+  pohinahinaGroup.add(leavesInst);
+  let leafIdx = 0;
+
+  const flowerGeo = new THREE.SphereGeometry(0.015, 5, 5);
+  const flowerInst = new THREE.InstancedMesh(flowerGeo, flowerMat, stems.length * 20);
+  pohinahinaGroup.add(flowerInst);
+  let flowerIdx = 0;
+
+  const up = new THREE.Vector3(0, 1, 0);
+
+  stems.forEach(({ curve, length }) => {
+    const numPairs = Math.floor(length * leafPairsPerUnit);
+
+    for (let i = 1; i <= numPairs; i++) {
+      const t = i / (numPairs + 1);
+      const point = curve.getPointAt(t);
+      const tangent = curve.getTangentAt(t).normalize();
+      const binormal = new THREE.Vector3().crossVectors(tangent, up).normalize();
+      const angleOffset = i % 2 === 0 ? 0 : Math.PI / 2;
+      const sizeScale = THREE.MathUtils.lerp(1.2, 0.6, t);
+      colorHelper.setHSL(0.38 + (Math.random() * 0.04 - 0.02), 0.15 + t * 0.05, 0.55 + Math.random() * 0.1);
+
+      for (const ang of [angleOffset, angleOffset + Math.PI]) {
+        if (leafIdx >= totalLeaves) break;
+        const leafOut = binormal.clone().applyAxisAngle(tangent, ang).normalize();
+        const leafDir = leafOut.clone()
+          .add(tangent.clone().multiplyScalar(0.6))
+          .add(new THREE.Vector3(0, 0.2, 0))
+          .normalize();
+        dummy.position.copy(point);
+        dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), leafDir);
+        dummy.rotateY((Math.random() - 0.5) * 0.2);
+        dummy.scale.setScalar(sizeScale);
+        dummy.updateMatrix();
+        leavesInst.setMatrixAt(leafIdx, dummy.matrix);
+        leavesInst.setColorAt(leafIdx, colorHelper);
+        leafIdx++;
+      }
+    }
+
+    // Flower clusters at ~70% of stem tips
+    if (Math.random() > 0.3) {
+      const tipPt = curve.getPointAt(0.98);
+      const tipTan = curve.getTangentAt(0.98).normalize();
+      const tipBi = new THREE.Vector3().crossVectors(tipTan, up).normalize();
+      const tipNorm = new THREE.Vector3().crossVectors(tipBi, tipTan).normalize();
+      const numF = 6 + Math.floor(Math.random() * 8);
+
+      for (let f = 0; f < numF && flowerIdx < stems.length * 20; f++) {
+        const fR = 0.03 + Math.random() * 0.04;
+        const fA = Math.random() * Math.PI * 2;
+        const offset = new THREE.Vector3()
+          .addScaledVector(tipBi, Math.cos(fA) * fR)
+          .addScaledVector(tipNorm, Math.sin(fA) * fR)
+          .addScaledVector(tipTan, (Math.random() - 0.2) * 0.08);
+        dummy.position.copy(tipPt).add(offset);
+        dummy.scale.setScalar(0.8 + Math.random() * 0.6);
+        dummy.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        dummy.updateMatrix();
+        colorHelper.setHSL(0.72 + Math.random() * 0.05, 0.4 + Math.random() * 0.2, 0.5 + Math.random() * 0.1);
+        flowerInst.setMatrixAt(flowerIdx, dummy.matrix);
+        flowerInst.setColorAt(flowerIdx, colorHelper);
+        flowerIdx++;
+      }
+    }
+  });
+
+  leavesInst.instanceMatrix.needsUpdate = true;
+  if (leavesInst.instanceColor) leavesInst.instanceColor.needsUpdate = true;
+  flowerInst.instanceMatrix.needsUpdate = true;
+  if (flowerInst.instanceColor) flowerInst.instanceColor.needsUpdate = true;
+
+  return pohinahinaGroup;
+}
+
 // ── Loulu (Pritchardia palm) procedural model ──
 export function createLoulu() {
   const louluGroup = new THREE.Group();
@@ -1163,10 +1314,9 @@ export function buildPlantModel(plantId: string): THREE.Group {
       break;
     }
     case "pohinahina": {
-      const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4, 0), plantMat);
-      bush.position.y = 0.25;
-      bush.scale.set(1.2, 0.6, 1.2);
-      group.add(bush);
+      const pohinahina = createPohinahina();
+      group.add(pohinahina);
+      group.scale.set(0.6, 0.6, 0.6);
       break;
     }
     case "kupukupu": {
