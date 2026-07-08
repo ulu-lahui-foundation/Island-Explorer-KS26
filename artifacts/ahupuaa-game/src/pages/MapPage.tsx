@@ -110,7 +110,7 @@ export function MapPage() {
     controls.dampingFactor = 0.05;
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
     controls.minDistance = 15;
-    controls.maxDistance = 250;
+    controls.maxDistance = 480;
     controls.zoomSpeed = 5;
     controls.minAzimuthAngle = -Math.PI / 2.2;
     controls.maxAzimuthAngle = Math.PI / 2.2;
@@ -652,8 +652,8 @@ export function MapPage() {
     scene.add(riverParticles);
 
     // ── Camera position ──
-    camera.position.set(0, 100, 200);
-    controls.target.set(0, 30, 0);
+    camera.position.set(0, 200, 400);
+    controls.target.set(0, 0, 0);
     controls.update();
 
     // ── Spawn helpers ──
@@ -711,8 +711,8 @@ export function MapPage() {
         const s = sceneRef.current;
         if (s) {
           const cam = s.camera;
-          const overviewPos = new THREE.Vector3(0, 100, 200);
-          const overviewTarget = new THREE.Vector3(0, 30, 0);
+          const overviewPos = new THREE.Vector3(0, 200, 400);
+          const overviewTarget = new THREE.Vector3(0, 0, 0);
           cam.position.lerp(overviewPos, 0.04);
           controls.target.lerp(overviewTarget, 0.04);
           controls.update();
