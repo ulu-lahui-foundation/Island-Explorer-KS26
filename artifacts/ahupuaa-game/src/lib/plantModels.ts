@@ -163,6 +163,166 @@ export function createNaupakaBush() {
   return bushGroup;
 }
 
+// ── Lāʻī (Ti / Cordyline fruticosa) procedural model ──
+export function createLai() {
+  const plantGroup = new THREE.Group();
+
+  const caneTan      = new THREE.Color(0xd9cbb3);
+  const caneDarkTan  = new THREE.Color(0x91795c);
+  const leafBase     = new THREE.Color(0x8bc940);
+  const leafBody     = new THREE.Color(0x5fb023);
+  const leafTipDead  = new THREE.Color(0xd6a849);
+  const midribColor  = 0x98d44c;
+
+  // Segmented trunk cane with alternating node colors + organic bend
+  function createSegmentedCane(height: number, radius: number, numSegments: number, bendX: number, bendZ: number) {
+    const heightSegments = numSegments * 6;
+    const geo = new THREE.CylinderGeometry(radius, radius, height, 10, heightSegments);
+    geo.translate(0, height / 2, 0);
+    const pos = geo.attributes.position as THREE.BufferAttribute;
+    const vertexColors = new Float32Array(pos.count * 3);
+    const v = new THREE.Vector3();
+    const segH = height / numSegments;
+
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      const safeY = Math.max(0, v.y);
+      const segFrac = safeY / segH;
+      const segIdx  = Math.floor(segFrac);
+      const localY  = segFrac - segIdx;
+      const c = segIdx % 2 === 0 ? caneTan : caneDarkTan;
+      vertexColors[i * 3]     = c.r;
+      vertexColors[i * 3 + 1] = c.g;
+      vertexColors[i * 3 + 2] = c.b;
+      let bulge = 1.0;
+      if (localY > 0.85)      bulge = 1.0 + (localY - 0.85) * 1.5;
+      else if (localY < 0.1)  bulge = 1.0 + (0.1 - localY) * 0.8;
+      const noise = (Math.random() - 0.5) * 0.01;
+      v.x = v.x * bulge + noise;
+      v.z = v.z * bulge + noise;
+      const t = Math.min(1, safeY / height);
+      const bf = Math.pow(t, 1.5);
+      v.x += bendX * bf;
+      v.z += bendZ * bf;
+      pos.setXYZ(i, v.x, v.y, v.z);
+    }
+    geo.setAttribute("color", new THREE.BufferAttribute(vertexColors, 3));
+    geo.computeVertexNormals();
+    return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0.0 }));
+  }
+
+  // Sword-shaped Ti leaf with V-fold, longitudinal arch, vertex color aging, and midrib
+  function createLeaf(length: number, width: number, ageRatio: number) {
+    const leafGroup = new THREE.Group();
+    const bladeGeo = new THREE.PlaneGeometry(width, length, 8, 20);
+    bladeGeo.translate(0, length / 2, 0);
+    const pos = bladeGeo.attributes.position as THREE.BufferAttribute;
+    const vertexColors = new Float32Array(pos.count * 3);
+    const v = new THREE.Vector3();
+    const tc = new THREE.Color();
+    const arch = length * (0.02 + 0.12 * (1.0 - ageRatio));
+
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      const ny = Math.max(0, Math.min(1, v.y / length));
+      const nx = Math.abs(v.x) / (width / 2);
+      let wScale = ny < 0.22 ? 0.06 : 0.06 + Math.sin(((ny - 0.22) / 0.78) * Math.PI) * 0.94;
+      v.x *= wScale;
+      v.z += nx * (width * 0.15);
+      v.z -= Math.pow(ny, 1.5) * arch;
+      pos.setXYZ(i, v.x, v.y, v.z);
+
+      if (ny < 0.22) {
+        tc.copy(leafBase);
+      } else {
+        tc.copy(leafBase).lerp(leafBody, (ny - 0.22) / 0.78);
+        if (ageRatio < 0.35 && ny > 0.6) {
+          tc.lerp(leafTipDead, (1.0 - ageRatio / 0.35) * ((ny - 0.6) / 0.4));
+        }
+      }
+      vertexColors[i * 3] = tc.r; vertexColors[i * 3 + 1] = tc.g; vertexColors[i * 3 + 2] = tc.b;
+    }
+    bladeGeo.setAttribute("color", new THREE.BufferAttribute(vertexColors, 3));
+    bladeGeo.computeVertexNormals();
+    const bladeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.15, metalness: 0.05, side: THREE.DoubleSide });
+    leafGroup.add(new THREE.Mesh(bladeGeo, bladeMat));
+
+    // Midrib
+    const sGeo = new THREE.CylinderGeometry(width * 0.025, width * 0.015, length, 4, 20);
+    sGeo.translate(0, length / 2, 0);
+    const sPos = sGeo.attributes.position as THREE.BufferAttribute;
+    const sv = new THREE.Vector3();
+    for (let i = 0; i < sPos.count; i++) {
+      sv.fromBufferAttribute(sPos, i);
+      const ny = Math.max(0, Math.min(1, sv.y / length));
+      sv.z -= Math.pow(ny, 1.5) * arch + width * 0.015;
+      sPos.setXYZ(i, sv.x, sv.y, sv.z);
+    }
+    sGeo.computeVertexNormals();
+    leafGroup.add(new THREE.Mesh(sGeo, new THREE.MeshStandardMaterial({ color: midribColor, roughness: 0.8, metalness: 0.0 })));
+    return leafGroup;
+  }
+
+  // Mother stump
+  const motherH = THREE.MathUtils.randFloat(0.6, 1.0);
+  const motherR = THREE.MathUtils.randFloat(0.10, 0.14);
+  plantGroup.add(createSegmentedCane(motherH, motherR, Math.max(2, Math.floor(motherH / 0.3)), 0, 0));
+
+  const numCanes = THREE.MathUtils.randInt(3, 4);
+  const phi = 137.5 * (Math.PI / 180);
+
+  for (let i = 0; i < numCanes; i++) {
+    const caneH   = THREE.MathUtils.randFloat(2.5, 4.5);
+    const caneR   = THREE.MathUtils.randFloat(0.05, 0.08);
+    const numSeg  = Math.max(3, Math.floor(caneH / 0.3));
+    const angleOut = (i / numCanes) * Math.PI * 2 + THREE.MathUtils.randFloat(-0.2, 0.2);
+    const spread  = THREE.MathUtils.randFloat(0.3, 0.7);
+    const bendX   = Math.cos(angleOut) * spread;
+    const bendZ   = Math.sin(angleOut) * spread;
+
+    const trunk = createSegmentedCane(caneH, caneR, numSeg, bendX, bendZ);
+    trunk.position.set(Math.cos(angleOut) * motherR * 0.5, motherH - 0.1, Math.sin(angleOut) * motherR * 0.5);
+    plantGroup.add(trunk);
+
+    const numLeaves = THREE.MathUtils.randInt(16, 24);
+    const leafStartFraction = 0.92;
+
+    for (let j = 0; j < numLeaves; j++) {
+      const ageRatio = j / numLeaves;
+      const t = leafStartFraction + (1.0 - leafStartFraction) * ageRatio;
+      const bf = Math.pow(t, 1.5);
+      const attachX = trunk.position.x + bendX * bf;
+      const attachY = trunk.position.y + t * caneH;
+      const attachZ = trunk.position.z + bendZ * bf;
+
+      const lenScale = 1.0 - Math.pow(ageRatio, 1.3);
+      const maxLen   = THREE.MathUtils.randFloat(1.8, 2.5);
+      const leafLen  = maxLen * (0.3 + 0.7 * lenScale);
+      const leafWid  = leafLen * THREE.MathUtils.randFloat(0.28, 0.38);
+
+      const leaf = createLeaf(leafLen, leafWid, ageRatio);
+      const trunkTangent = new THREE.Vector3(1.5 * bendX * Math.pow(t, 0.5), caneH, 1.5 * bendZ * Math.pow(t, 0.5)).normalize();
+
+      const leafPivot = new THREE.Group();
+      leafPivot.position.set(attachX, attachY, attachZ);
+      leafPivot.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), trunkTangent);
+      leaf.rotation.order = "YXZ";
+      leaf.rotation.y = j * phi;
+      leaf.rotation.x = -THREE.MathUtils.lerp(Math.PI * 0.55, -Math.PI * 0.1, Math.pow(ageRatio, 0.7));
+      leaf.rotation.z = (Math.random() - 0.5) * 0.25;
+      leafPivot.add(leaf);
+      plantGroup.add(leafPivot);
+    }
+  }
+
+  // Center horizontally
+  const box = new THREE.Box3().setFromObject(plantGroup);
+  const center = box.getCenter(new THREE.Vector3());
+  plantGroup.position.set(-center.x, 0, -center.z);
+
+  return plantGroup;
+}
+
 // ── Pōhinahina (Vitex rotundifolia) procedural model ──
 export function createPohinahina() {
   const pohinahinaGroup = new THREE.Group();
@@ -1373,13 +1533,8 @@ export function buildPlantModel(plantId: string): THREE.Group {
       break;
     }
     case "lai": {
-      for (let i = 0; i < 5; i++) {
-        const leaf = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.8), plantMat);
-        leaf.position.set((Math.random() - 0.5) * 0.2, 0.3 + i * 0.15, (Math.random() - 0.5) * 0.2);
-        leaf.rotation.y = Math.random() * Math.PI * 2;
-        leaf.rotation.x = -0.2;
-        group.add(leaf);
-      }
+      const lai = createLai();
+      group.add(lai);
       break;
     }
     default: {

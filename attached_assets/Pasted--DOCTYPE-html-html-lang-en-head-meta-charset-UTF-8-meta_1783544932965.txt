@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Procedural Hawaiian Lāʻī (Ti Plant)</title>
+   <style>
+       body {
+           margin: 0;
+           padding: 0;
+           overflow: hidden;
+           background-color: #0c1114; /* Deep studio backdrop */
+           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       }
+       canvas {
+           display: block;
+           width: 100vw;
+           height: 100vh;
+       }
+       #loading {
+           position: absolute;
+           top: 50%;
+           left: 50%;
+           transform: translate(-50%, -50%);
+           color: #a8d5ba;
+           font-size: 1.2rem;
+           pointer-events: none;
+           transition: opacity 0.5s ease;
+           text-transform: uppercase;
+           letter-spacing: 2px;
+       }
+   </style>
+</head>
+<body>
+   <div id="loading">Generating Lāʻī...</div>
+
+
+   <!-- Load Three.js and OrbitControls -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+
+   <script>
+       let scene, camera, renderer, controls;
+
+
+       // Bright lime green leaf palette & Alternating tan trunk colors based on photos
+       const colors = {
+           caneTan: new THREE.Color(0xd9cbb3),        // Light tan/whitish rings
+           caneDarkTan: new THREE.Color(0x91795c),    // Darker brown segments
+           leafBase: new THREE.Color(0x8bc940),       // Bright yellow-green stem/base
+           leafBody: new THREE.Color(0x5fb023),       // Vibrant lime/apple green
+           leafTipDead: new THREE.Color(0xd6a849),    // Yellow/Brown dead tip for old leaves
+           midrib: 0x98d44c                           // Light prominent central vein
+       };
+
+
+       /**
+        * Procedurally generates a trunk with distinct, alternating colored segments and nodes.
+        */
+       function createSegmentedCane(height, radius, numSegments, bendX, bendZ) {
+           const heightSegments = numSegments * 6; // High resolution to support node bulging
+           const geo = new THREE.CylinderGeometry(radius, radius, height, 12, heightSegments);
+          
+           // Move origin to the bottom center of the trunk
+           geo.translate(0, height / 2, 0);
+
+
+           const pos = geo.attributes.position;
+           const vertexColors = new Float32Array(pos.count * 3);
+           const v = new THREE.Vector3();
+           const segmentHeight = height / numSegments;
+
+
+           for (let i = 0; i < pos.count; i++) {
+               v.fromBufferAttribute(pos, i);
+              
+               // Clamp Y to prevent microscopic negative values from floating-point errors
+               const safeY = Math.max(0, v.y);
+              
+               // Determine which segment this vertex belongs to
+               const segmentFraction = safeY / segmentHeight;
+               const segmentIndex = Math.floor(segmentFraction);
+               const localY = segmentFraction - segmentIndex; // 0.0 (bottom of segment) to 1.0 (top)
+
+
+               // 1. Alternating Colors
+               const currentColor = (segmentIndex % 2 === 0) ? colors.caneTan : colors.caneDarkTan;
+               vertexColors[i * 3] = currentColor.r;
+               vertexColors[i * 3 + 1] = currentColor.g;
+               vertexColors[i * 3 + 2] = currentColor.b;
+
+
+               // 2. Node Bulging (Leaf Scars)
+               // We pinch slightly in the middle and expand at the top/bottom of each segment
+               let bulge = 1.0;
+               if (localY > 0.85) {
+                   // Bulge out near the top lip of the segment
+                   bulge = 1.0 + (localY - 0.85) * 1.5;
+               } else if (localY < 0.1) {
+                   // Slight ridge at the bottom
+                   bulge = 1.0 + (0.1 - localY) * 0.8;
+               }
+              
+               // Add minor organic texture/noise to the trunk
+               const noise = (Math.random() - 0.5) * 0.1;
+              
+               v.x = v.x * bulge + noise;
+               v.z = v.z * bulge + noise;
+
+
+               // 3. Organic Bending
+               // Apply a gentle curve to the whole trunk based on height
+               const t = Math.min(1, safeY / height); // Normalized height (0 to 1)
+               const bendFactor = Math.pow(t, 1.5); // Curves more towards the top
+               v.x += bendX * bendFactor;
+               v.z += bendZ * bendFactor;
+
+
+               pos.setXYZ(i, v.x, v.y, v.z);
+           }
+
+
+           geo.setAttribute('color', new THREE.BufferAttribute(vertexColors, 3));
+           geo.computeVertexNormals();
+
+
+           const mat = new THREE.MeshStandardMaterial({
+               vertexColors: true,
+               roughness: 0.95,
+               metalness: 0.0
+           });
+
+
+           const mesh = new THREE.Mesh(geo, mat);
+           mesh.castShadow = true;
+           mesh.receiveShadow = true;
+
+
+           return mesh;
+       }
+
+
+       /**
+        * Procedurally sculpts a single sword-like Ti leaf.
+        */
+       function createLeaf(length, width, ageRatio) {
+           const leafGroup = new THREE.Group();
+
+
+           // High segment count for smooth structural bending
+           const segX = 8;
+           const segY = 20;
+           const bladeGeo = new THREE.PlaneGeometry(width, length, segX, segY);
+          
+           // Move origin to the base of the leaf
+           bladeGeo.translate(0, length / 2, 0);
+
+
+           const pos = bladeGeo.attributes.position;
+           const uvs = bladeGeo.attributes.uv;
+           const vertexColors = new Float32Array(pos.count * 3);
+           const v = new THREE.Vector3();
+           const tempColor = new THREE.Color();
+
+
+           // Arch amount shared by both blade and stem (adjusted to allow a natural outward drape)
+           const archAmount = length * (0.02 + 0.12 * (1.0 - ageRatio));
+
+
+           for (let i = 0; i < pos.count; i++) {
+               v.fromBufferAttribute(pos, i);
+              
+               // Normalized Coordinates [0.0 to 1.0]
+               const ny = Math.max(0, Math.min(1, v.y / length));
+               const nx = Math.abs(v.x) / (width / 2);
+
+
+               // A. Shape Silhouette (Longer petiole, broader blade like the photos)
+               let wScale = 1.0;
+               if (ny < 0.22) {
+                   // Petiole (stem): Narrow and longer
+                   wScale = 0.06;
+               } else {
+                   // Oval blade: flares out quickly then tapers
+                   const taperT = (ny - 0.22) / 0.78;
+                   wScale = 0.06 + Math.sin(taperT * Math.PI) * 0.94;
+               }
+               v.x *= wScale;
+
+
+               // B. V-Fold (Cross-section)
+               // Center is flat, edges curl UPwards (+Z)
+               v.z += nx * (width * 0.15);
+
+
+               // C. Longitudinal Arch
+               // Leaves curve very slightly backwards.
+               v.z -= Math.pow(ny, 1.5) * archAmount;
+
+
+               pos.setXYZ(i, v.x, v.y, v.z);
+
+
+               // D. Procedural Vertex Coloring (Bright Greens & Dead Tips)
+               if (ny < 0.22) {
+                   tempColor.copy(colors.leafBase); // Brighter stem base
+               } else {
+                   const bodyT = (ny - 0.22) / 0.78;
+                   tempColor.copy(colors.leafBase).lerp(colors.leafBody, bodyT);
+                  
+                   // Add yellow/brown dead tips to the oldest leaves
+                   if (ageRatio < 0.35 && ny > 0.6) {
+                       const deadT = (ny - 0.6) / 0.4; // 0 to 1 at the very tip
+                       // Intensity based on how old the leaf is and how close to the tip
+                       const intensity = (1.0 - (ageRatio / 0.35)) * deadT;
+                       tempColor.lerp(colors.leafTipDead, intensity);
+                   }
+               }
+              
+               vertexColors[i * 3] = tempColor.r;
+               vertexColors[i * 3 + 1] = tempColor.g;
+               vertexColors[i * 3 + 2] = tempColor.b;
+           }
+
+
+           bladeGeo.setAttribute('color', new THREE.BufferAttribute(vertexColors, 3));
+           bladeGeo.computeVertexNormals();
+
+
+           const bladeMat = new THREE.MeshStandardMaterial({
+               color: 0xffffff, // White base to let vertex colors show perfectly
+               vertexColors: true,
+               roughness: 0.15, // Highly glossy
+               metalness: 0.05,
+               side: THREE.DoubleSide
+           });
+
+
+           const bladeMesh = new THREE.Mesh(bladeGeo, bladeMat);
+           bladeMesh.castShadow = true;
+           bladeMesh.receiveShadow = true;
+           leafGroup.add(bladeMesh);
+
+
+           // E. Add Central Stem (Midrib) Mesh
+           const stemGeo = new THREE.CylinderGeometry(width * 0.025, width * 0.015, length, 5, segY);
+           stemGeo.translate(0, length / 2, 0); // Move origin to base
+
+
+           const sPos = stemGeo.attributes.position;
+           const sv = new THREE.Vector3();
+          
+           for (let i = 0; i < sPos.count; i++) {
+               sv.fromBufferAttribute(sPos, i);
+               const ny = Math.max(0, Math.min(1, sv.y / length));
+              
+               // Match the exact same longitudinal arch as the blade so they stay aligned
+               sv.z -= Math.pow(ny, 1.5) * archAmount;
+              
+               // Push slightly backwards (-Z) so it protrudes visibly from the underside of the leaf
+               sv.z -= width * 0.015;
+
+
+               sPos.setXYZ(i, sv.x, sv.y, sv.z);
+           }
+           stemGeo.computeVertexNormals();
+
+
+           const stemMat = new THREE.MeshStandardMaterial({
+               color: colors.midrib,
+               roughness: 0.8,
+               metalness: 0.0
+           });
+           const stemMesh = new THREE.Mesh(stemGeo, stemMat);
+           stemMesh.castShadow = true;
+           stemMesh.receiveShadow = true;
+           leafGroup.add(stemMesh);
+
+
+           return leafGroup;
+       }
+
+
+       function generateTiPlant() {
+           const plantGroup = new THREE.Group();
+          
+           // --- 1. GENERATE CENTRAL MOTHER STUMP ---
+           // Create a single, thick base stump that the other canes will branch from
+           const motherStumpHeight = THREE.MathUtils.randFloat(5, 12); // Made significantly shorter
+           const motherStumpRadius = THREE.MathUtils.randFloat(2.0, 2.8);
+           const motherSegments = Math.floor(motherStumpHeight / 3);
+           const motherStump = createSegmentedCane(motherStumpHeight, motherStumpRadius, motherSegments, 0, 0);
+           plantGroup.add(motherStump);
+          
+           // --- 2. GENERATE BRANCHING CANES ---
+           const numCanes = THREE.MathUtils.randInt(3, 5);
+
+
+           for (let i = 0; i < numCanes; i++) {
+               // Cane parameters
+               const caneHeight = THREE.MathUtils.randFloat(15, 30); // Made significantly shorter
+               const caneRadius = THREE.MathUtils.randFloat(1.0, 1.4);
+               const numSegments = Math.floor(caneHeight / 3);
+              
+               // Outward bend for the clustered canes
+               const angleOut = (i / numCanes) * Math.PI * 2 + THREE.MathUtils.randFloat(-0.2, 0.2);
+               const spreadDist = THREE.MathUtils.randFloat(8, 18);
+               const bendX = Math.cos(angleOut) * spreadDist;
+               const bendZ = Math.sin(angleOut) * spreadDist;
+
+
+               // Add Segmented Trunk
+               const trunkMesh = createSegmentedCane(caneHeight, caneRadius, numSegments, bendX, bendZ);
+              
+               // Position base of this branch slightly inside the top of the mother stump
+               trunkMesh.position.x = Math.cos(angleOut) * motherStumpRadius * 0.5;
+               trunkMesh.position.y = motherStumpHeight - 2;
+               trunkMesh.position.z = Math.sin(angleOut) * motherStumpRadius * 0.5;
+               plantGroup.add(trunkMesh);
+
+
+               // Add Clustered Leaves (Cone Shape & Spread)
+               const numLeaves = THREE.MathUtils.randInt(45, 65);
+               const leafStartFraction = 0.95; // Clustered tightly at the very top 5%
+               const phi = 137.5 * (Math.PI / 180); // Golden angle
+              
+               for (let j = 0; j < numLeaves; j++) {
+                   const ageRatio = j / numLeaves; // 0 = lowest/oldest, 1 = highest/newest
+                   const t = leafStartFraction + (1.0 - leafStartFraction) * ageRatio;
+                  
+                   // Calculate attachment point matching the cane's mathematical bend and new elevated position
+                   const attachY = trunkMesh.position.y + t * caneHeight;
+                   const bendFactor = Math.pow(t, 1.5);
+                   const attachX = trunkMesh.position.x + bendX * bendFactor;
+                   const attachZ = trunkMesh.position.z + bendZ * bendFactor;
+
+
+                   // CONE SHAPE LOGIC
+                   const lengthScale = 1.0 - Math.pow(ageRatio, 1.3);
+                   const maxLeafLen = THREE.MathUtils.randFloat(32, 45);
+                   const leafLen = maxLeafLen * (0.3 + 0.7 * lengthScale);
+                  
+                   // WIDER LEAVES: Significantly increased the width multiplier for an oval shape
+                   const leafWid = leafLen * THREE.MathUtils.randFloat(0.28, 0.38);
+
+
+                   const leaf = createLeaf(leafLen, leafWid, ageRatio);
+                  
+                   // Calculate the tangent (direction) of the trunk's bend at this height
+                   const dX = 1.5 * bendX * Math.pow(t, 0.5);
+                   const dY = caneHeight;
+                   const dZ = 1.5 * bendZ * Math.pow(t, 0.5);
+                   const trunkTangent = new THREE.Vector3(dX, dY, dZ).normalize();
+
+
+                   // Create a pivot to align the leaf cluster to the trunk's facing direction
+                   const leafPivot = new THREE.Group();
+                   leafPivot.position.set(attachX, attachY, attachZ);
+                   leafPivot.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), trunkTangent);
+                  
+                   // FIX: Change rotation order so it orbits the stem FIRST, then tilts outward
+                   leaf.rotation.order = 'YXZ';
+
+
+                   // Spiral rotation around the local Y axis
+                   leaf.rotation.y = j * phi;
+                  
+                   // CONE SHAPE SPREAD LOGIC: Fanned out widely to form a distinct cone/rosette
+                   const maxTilt = Math.PI * 0.55; // Flaring outward and slightly downward at the base of the cluster
+                   const minTilt = -Math.PI * 0.1; // Pointing straight up at the very center
+                  
+                   // Using a power curve (Math.pow) creates a more distinct, flared cone silhouette
+                   let tiltAngle = THREE.MathUtils.lerp(maxTilt, minTilt, Math.pow(ageRatio, 0.7));
+                  
+                   leaf.rotation.x = -tiltAngle;
+                  
+                   // Natural organic twist
+                   leaf.rotation.z = (Math.random() - 0.5) * 0.25;
+
+
+                   leafPivot.add(leaf);
+                   plantGroup.add(leafPivot);
+               }
+           }
+
+
+           // Center the entire cluster
+           const box = new THREE.Box3().setFromObject(plantGroup);
+           const center = box.getCenter(new THREE.Vector3());
+           plantGroup.position.set(-center.x, 0, -center.z);
+
+
+           return plantGroup;
+       }
+
+
+       function init() {
+           const container = document.createElement('div');
+           document.body.appendChild(container);
+
+
+           scene = new THREE.Scene();
+           scene.fog = new THREE.FogExp2(0x0c1114, 0.003);
+
+
+           camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
+           camera.position.set(-80, 70, 100);
+
+
+           renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+           renderer.setSize(window.innerWidth, window.innerHeight);
+           renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+           renderer.shadowMap.enabled = true;
+           renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+           renderer.outputEncoding = THREE.sRGBEncoding;
+           renderer.toneMapping = THREE.ACESFilmicToneMapping;
+           container.appendChild(renderer.domElement);
+
+
+           controls = new THREE.OrbitControls(camera, renderer.domElement);
+           controls.target.set(0, 30, 0);
+           controls.enableDamping = true;
+           controls.dampingFactor = 0.05;
+           controls.maxPolarAngle = Math.PI / 2 + 0.05;
+
+
+           // Lighting for Deep Glossy Greens
+           const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+           scene.add(ambient);
+
+
+           const sun = new THREE.DirectionalLight(0xfffae6, 1.2);
+           sun.position.set(50, 150, 50);
+           sun.castShadow = true;
+           sun.shadow.mapSize.width = 2048;
+           sun.shadow.mapSize.height = 2048;
+           sun.shadow.camera.near = 10;
+           sun.shadow.camera.far = 300;
+           sun.shadow.camera.left = -80;
+           sun.shadow.camera.right = 80;
+           sun.shadow.camera.top = 80;
+           sun.shadow.camera.bottom = -80;
+           sun.shadow.bias = -0.0005;
+           scene.add(sun);
+
+
+           // Rim light to catch the waxy leaf edges
+           const rimLight = new THREE.DirectionalLight(0xaaddff, 0.8);
+           rimLight.position.set(-100, 50, -100);
+           scene.add(rimLight);
+
+
+           // Ground
+           const groundGeo = new THREE.PlaneGeometry(1000, 1000);
+           const groundMat = new THREE.MeshStandardMaterial({
+               color: 0x161412,
+               roughness: 0.9,
+               metalness: 0.0
+           });
+           const ground = new THREE.Mesh(groundGeo, groundMat);
+           ground.rotation.x = -Math.PI / 2;
+           ground.receiveShadow = true;
+           scene.add(ground);
+
+
+           const plant = generateTiPlant();
+           scene.add(plant);
+
+
+           // Hide loading text
+           document.getElementById('loading').style.opacity = 0;
+
+
+           window.addEventListener('resize', onWindowResize, false);
+           animate();
+       }
+
+
+       function onWindowResize() {
+           camera.aspect = window.innerWidth / window.innerHeight;
+           camera.updateProjectionMatrix();
+           renderer.setSize(window.innerWidth, window.innerHeight);
+       }
+
+
+       function animate() {
+           requestAnimationFrame(animate);
+           controls.update();
+           renderer.render(scene, camera);
+       }
+
+
+       window.onload = init;
+   </script>
+</body>
+</html>
+
