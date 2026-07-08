@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { useGame, Zone, PLANT_DATABASE, Plant } from "@/lib/GameContext";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Leaf } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as THREE from "three";
@@ -40,6 +40,14 @@ export function MapPage() {
   const { toast } = useToast();
 
   const [webglAvailable, setWebglAvailable] = useState<boolean | null>(null);
+
+  // Camera zoom target (null = overview, else 3D target pos)
+  const cameraTargetRef = useRef<{
+    target: THREE.Vector3;
+    distance: number;
+    height: number;
+    active: boolean;
+  } | null>(null);
 
   // Drag ghost state
   const [dragGhost, setDragGhost] = useState<{ plant: Plant; x: number; y: number } | null>(null);
@@ -1236,6 +1244,45 @@ export function MapPage() {
 
       controls.update();
 
+      // Smooth camera zoom (lerp)
+      const zoomTarget = cameraTargetRef.current;
+      if (zoomTarget && zoomTarget.active) {
+        const s = sceneRef.current;
+        if (s) {
+          const cam = s.camera;
+          const targetPos = zoomTarget.target.clone();
+          const desiredCamPos = targetPos.clone().add(
+            new THREE.Vector3(0, zoomTarget.height, zoomTarget.distance)
+          );
+          const alpha = 0.04; // smooth speed
+          cam.position.lerp(desiredCamPos, alpha);
+          controls.target.lerp(targetPos, alpha);
+          controls.update();
+          if (zoomTarget.distance < 3) {
+            controls.enablePan = false;
+            controls.enableZoom = false;
+            controls.enableRotate = false;
+          }
+        }
+      } else if (zoomTarget && !zoomTarget.active) {
+        // Returning to overview
+        const s = sceneRef.current;
+        if (s) {
+          const cam = s.camera;
+          const overviewPos = new THREE.Vector3(0, 100, 200);
+          const overviewTarget = new THREE.Vector3(0, 30, 0);
+          cam.position.lerp(overviewPos, 0.04);
+          controls.target.lerp(overviewTarget, 0.04);
+          controls.update();
+          if (cam.position.distanceTo(overviewPos) < 2) {
+            cameraTargetRef.current = null;
+            controls.enablePan = true;
+            controls.enableZoom = true;
+            controls.enableRotate = true;
+          }
+        }
+      }
+
       // Sun / Moon orbit
       const sunAngle = time * 0.1;
       sunMesh.position.set(Math.cos(sunAngle) * 500, Math.sin(sunAngle) * 300 + 100, Math.sin(sunAngle) * 200);
@@ -1343,6 +1390,12 @@ export function MapPage() {
     const onCanvasTap = (e: PointerEvent) => {
       const s = sceneRef.current;
       if (!s || s.spawnedPlants.length === 0) return;
+      // If zoomed in, tapping empty ground zooms back out
+      if (cameraTargetRef.current?.active) {
+        cameraTargetRef.current.active = false;
+        setSelectedPlantIdx(null);
+        return;
+      }
       const rect = s.renderer.domElement.getBoundingClientRect();
       s.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       s.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -1351,6 +1404,13 @@ export function MapPage() {
       for (let i = 0; i < s.spawnedPlants.length; i++) {
         const intersects = s.raycaster.intersectObjects(s.spawnedPlants[i].children, true);
         if (intersects.length > 0) {
+          const worldPos = s.spawnedPlants[i].position.clone();
+          cameraTargetRef.current = {
+            target: worldPos,
+            distance: 10,
+            height: 12,
+            active: true,
+          };
           setSelectedPlantIdx(i);
           return;
         }
@@ -1526,60 +1586,35 @@ export function MapPage() {
     </div>
   );
 
-  /* ── Shared plant detail overlay (zoom-from-plant) ── */
+  /* ── Selected-plant close-up: only Dig Up button top-right ── */
   const selectedPlant = selectedPlantIdx !== null ? placedPlants[selectedPlantIdx] : null;
-  const selectedPlantData = selectedPlant ? PLANT_DATABASE.find(p => p.id === selectedPlant.plantId) : null;
 
   const handleDigUp = () => {
     if (selectedPlantIdx !== null) {
+      cameraTargetRef.current = null;
       sceneRef.current?.removePlant3D(selectedPlantIdx);
       removePlacedPlant(selectedPlantIdx);
     }
     setSelectedPlantIdx(null);
   };
 
-  /* Zoom-in plant detail card (single motion.div for AnimatePresence) */
-  const plantDetailOverlay = selectedPlant && selectedPlantData ? (
-    <AnimatePresence>
-      <motion.div
-        key="plant-zoom"
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0, opacity: 0 }}
-        transition={{ type: "spring", damping: 22, stiffness: 300 }}
-        className="absolute inset-0 z-[200] flex items-center justify-center"
-        style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(3px)" }}
-        onClick={() => setSelectedPlantIdx(null)}
+  // Minimal button shown while zoomed in on a plant
+  const plantDetailOverlay = selectedPlant && cameraTargetRef.current?.active ? (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.8 }}
+      transition={{ type: "spring", damping: 20, stiffness: 260 }}
+      className="absolute top-4 right-4 z-[200]"
+    >
+      <button
+        onClick={handleDigUp}
+        className="px-4 py-2 rounded-full text-sm font-bold shadow-xl transition-transform active:scale-90"
+        style={{ background: "#b94040", color: "#fff", border: "2.5px solid rgba(255,255,255,0.5)", whiteSpace: "nowrap" }}
       >
-        <div
-          className="relative flex flex-col items-center"
-          style={{ width: "30vw", minWidth: 180 }}
-          onClick={e => e.stopPropagation()}
-        >
-          {/* Dig Up button */}
-          <button
-            onClick={handleDigUp}
-            className="absolute -top-5 -right-5 z-10 px-3 py-1.5 rounded-full text-xs font-bold shadow-xl transition-transform active:scale-90"
-            style={{ background: "#b94040", color: "#fff", border: "2.5px solid rgba(255,255,255,0.5)", whiteSpace: "nowrap" }}
-          >
-            Dig Up
-          </button>
-
-          {/* Plant image */}
-          <div className="w-full aspect-square rounded-2xl overflow-hidden shadow-2xl"
-            style={{ border: "3px solid rgba(246,241,231,0.8)" }}>
-            <img src={selectedPlantData.image} alt={selectedPlantData.name} className="w-full h-full object-cover" />
-          </div>
-
-          {/* Name label */}
-          <div className="mt-2 px-4 py-1.5 rounded-xl text-center shadow"
-            style={{ background: "rgba(246,241,231,0.97)" }}>
-            <div className="text-sm font-bold" style={{ color: "#26342F" }}>{selectedPlantData.name}</div>
-            <div className="text-[10px] mt-0.5 capitalize" style={{ color: "#2F6F4E" }}>{selectedPlantData.zone}</div>
-          </div>
-        </div>
-      </motion.div>
-    </AnimatePresence>
+        Dig Up
+      </button>
+    </motion.div>
   ) : null;
 
   /* ── 2D fallback (no WebGL) ── */
