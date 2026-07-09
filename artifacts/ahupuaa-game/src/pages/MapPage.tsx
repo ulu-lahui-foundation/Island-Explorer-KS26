@@ -108,8 +108,8 @@ export function MapPage() {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
-    controls.maxPolarAngle = Math.PI / 2 - 0.05;
-    controls.minDistance = 15;
+    controls.maxPolarAngle = Math.PI / 2 - 0.12;
+    controls.minDistance = 45;
     controls.maxDistance = 480;
     controls.zoomSpeed = 5;
     controls.minAzimuthAngle = -Math.PI / 2.2;
