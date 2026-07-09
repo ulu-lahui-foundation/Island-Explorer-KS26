@@ -1691,13 +1691,13 @@ export function buildPlantModel(plantId: string): THREE.Group {
     case "kukui": {
       const kukui = createKukuiTree();
       group.add(kukui);
-      group.scale.set(0.6, 0.6, 0.6);
+      group.scale.set(0.70, 0.70, 0.70);
       break;
     }
     case "ohia": {
       const ohia = createOhiaTree();
       group.add(ohia);
-      group.scale.set(5, 5, 5);
+      group.scale.set(0.70, 0.70, 0.70);
       break;
     }
     case "naupaka": {
@@ -1727,13 +1727,13 @@ export function buildPlantModel(plantId: string): THREE.Group {
     case "hapuu": {
       const hapuu = createHapuu();
       group.add(hapuu);
-      group.scale.set(0.5, 0.5, 0.5);
+      group.scale.set(0.70, 0.70, 0.70);
       break;
     }
     case "loulu": {
       const loulu = createLoulu();
       group.add(loulu);
-      group.scale.set(0.28, 0.28, 0.28);
+      group.scale.set(0.70, 0.70, 0.70);
       break;
     }
     case "ilima": {
@@ -1757,12 +1757,13 @@ export function buildPlantModel(plantId: string): THREE.Group {
     case "ulu": {
       const ulu = createUluTree();
       group.add(ulu);
-      group.scale.set(0.55, 0.55, 0.55);
+      group.scale.set(0.70, 0.70, 0.70);
       break;
     }
     case "lai": {
       const lai = createLai();
       group.add(lai);
+      group.scale.set(0.70, 0.70, 0.70);
       break;
     }
     case "limu": {
