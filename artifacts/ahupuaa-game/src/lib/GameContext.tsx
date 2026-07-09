@@ -63,17 +63,17 @@ export function GameProvider({ children, username }: { children: ReactNode; user
 
   const [currentView, setCurrentView] = useState<ViewState>('ahupuaa');
 
+  // All plants always unlocked — full Plant Index access for everyone
   const [collectedPlants, setCollectedPlants] = useState<string[]>(
-    savedState?.collectedPlants ?? []
+    PLANT_DATABASE.map(p => p.id)
   );
 
-  const [inventory, setInventory] = useState<Plant[]>(() => {
-    const ids = savedState?.inventoryIds ?? [];
-    return ids
-      .map(id => PLANT_DATABASE.find(p => p.id === id))
-      .filter((p): p is Plant => p !== undefined);
-  });
+  // 2 of each plant in inventory on every session start
+  const [inventory, setInventory] = useState<Plant[]>(
+    PLANT_DATABASE.flatMap(p => [p, p])
+  );
 
+  // Per-user placed plants are preserved across sessions
   const [placedPlants, setPlacedPlants] = useState<PlacedPlant[]>(
     savedState?.placedPlants ?? []
   );
