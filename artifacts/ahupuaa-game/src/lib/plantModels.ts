@@ -1703,25 +1703,25 @@ export function buildPlantModel(plantId: string): THREE.Group {
     case "naupaka": {
       const naupaka = createNaupakaBush();
       group.add(naupaka);
-      group.scale.set(8, 8, 8);
+      group.scale.set(0.35, 0.35, 0.35);
       break;
     }
     case "pohinahina": {
       const pohinahina = createPohinahina();
       group.add(pohinahina);
-      group.scale.set(0.6, 0.6, 0.6);
+      group.scale.set(0.35, 0.35, 0.35);
       break;
     }
     case "kupukupu": {
       const fern = createKupukupuFern();
       group.add(fern);
-      group.scale.set(4, 4, 4);
+      group.scale.set(0.35, 0.35, 0.35);
       break;
     }
     case "palapalai": {
       const palapalai = createPalapalai();
       group.add(palapalai);
-      group.scale.set(0.8, 0.8, 0.8);
+      group.scale.set(0.35, 0.35, 0.35);
       break;
     }
     case "hapuu": {
@@ -1746,12 +1746,13 @@ export function buildPlantModel(plantId: string): THREE.Group {
         flower.position.set((Math.random() - 0.5) * 0.4, 0.4 + Math.random() * 0.2, (Math.random() - 0.5) * 0.4);
         group.add(flower);
       }
+      group.scale.set(0.35, 0.35, 0.35);
       break;
     }
     case "aalii": {
       const aalii = createAalii();
       group.add(aalii);
-      group.scale.set(0.55, 0.55, 0.55);
+      group.scale.set(0.35, 0.35, 0.35);
       break;
     }
     case "ulu": {
@@ -1769,7 +1770,7 @@ export function buildPlantModel(plantId: string): THREE.Group {
     case "limu": {
       const limu = createLimuKohu();
       group.add(limu);
-      group.scale.set(0.6, 0.6, 0.6);
+      group.scale.set(0.35, 0.35, 0.35);
       break;
     }
     default: {
