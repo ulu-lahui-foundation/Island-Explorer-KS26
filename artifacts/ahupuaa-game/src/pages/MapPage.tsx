@@ -246,7 +246,7 @@ export function MapPage() {
     scene.add(terrain);
 
     // ── Backdrop island ──
-    const islandGeo = new THREE.PlaneGeometry(1200, 1200, 64, 64);
+    const islandGeo = new THREE.PlaneGeometry(1200, 1200, 160, 160);
     islandGeo.rotateX(-Math.PI / 2);
     const bdPos = islandGeo.attributes.position;
     const bdColors: number[] = [];
@@ -334,7 +334,7 @@ export function MapPage() {
     scene.add(backdrop);
 
     // ── Surrounding forest ──
-    const treeCount = 300;
+    const treeCount = 1500;
     const trunkGeo = new THREE.CylinderGeometry(0.3, 0.5, 2.5, 5);
     const leavesGeo = new THREE.DodecahedronGeometry(2.5, 0);
     leavesGeo.translate(0, 2.2, 0);
@@ -342,10 +342,10 @@ export function MapPage() {
     const leavesMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, flatShading: true });
     const trunkInstanced = new THREE.InstancedMesh(trunkGeo, trunkMat, treeCount);
     const leavesInstanced = new THREE.InstancedMesh(leavesGeo, leavesMat, treeCount);
-    trunkInstanced.castShadow = false;
-    trunkInstanced.receiveShadow = false;
-    leavesInstanced.castShadow = false;
-    leavesInstanced.receiveShadow = false;
+    trunkInstanced.castShadow = true;
+    trunkInstanced.receiveShadow = true;
+    leavesInstanced.castShadow = true;
+    leavesInstanced.receiveShadow = true;
 
     const dummyTree = new THREE.Object3D();
     const treeColor = new THREE.Color();
@@ -421,7 +421,7 @@ export function MapPage() {
     scene.add(leavesInstanced);
 
     // ── Ocean ──
-    const oceanGeo = new THREE.PlaneGeometry(2000, 2000, 16, 16);
+    const oceanGeo = new THREE.PlaneGeometry(2000, 2000, 64, 64);
     oceanGeo.rotateX(-Math.PI / 2);
     const oceanMat = new THREE.MeshStandardMaterial({ color: 0x0077be, transparent: true, opacity: 0.75, roughness: 0.1, metalness: 0.6 });
     const ocean = new THREE.Mesh(oceanGeo, oceanMat);
@@ -461,13 +461,16 @@ export function MapPage() {
     const clouds: { mesh: THREE.Group; speed: number }[] = [];
     const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0, flatShading: true, transparent: true, opacity: 0.9 });
     const puffGeo = new THREE.IcosahedronGeometry(1, 0);
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 20; i++) {
       const cloud = new THREE.Group();
-      for (let j = 0; j < 3; j++) {
+      const numPuffs = 4 + Math.floor(Math.random() * 5);
+      for (let j = 0; j < numPuffs; j++) {
         const puff = new THREE.Mesh(puffGeo, cloudMat);
         puff.position.set((Math.random() - 0.5) * 15, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 15);
         const s = 4 + Math.random() * 8;
         puff.scale.set(s, s, s);
+        puff.castShadow = true;
+        puff.receiveShadow = true;
         cloud.add(puff);
       }
       cloud.position.set((Math.random() - 0.5) * 1000, 120 + Math.random() * 60, (Math.random() - 0.5) * 1000);
@@ -475,9 +478,151 @@ export function MapPage() {
       clouds.push({ mesh: cloud, speed: 0.1 + Math.random() * 0.2 });
     }
 
+    // ── Birds ──
+    interface Bird { mesh: THREE.Group; rightWing: THREE.Mesh; leftWing: THREE.Mesh; speed: number; flapSpeed: number; turnSpeed: number; baseY: number; offset: number }
+    const birds: Bird[] = [];
+    const birdColors = [0xcc0000, 0xdd2222, 0xcccc00, 0xaaaa00];
+    for (let i = 0; i < 25; i++) {
+      const birdGroup = new THREE.Group();
+      const birdMat = new THREE.MeshStandardMaterial({ color: birdColors[Math.floor(Math.random() * birdColors.length)], roughness: 0.6, flatShading: true });
+      const bodyGeo = new THREE.CapsuleGeometry(0.25, 0.8, 8, 8);
+      bodyGeo.rotateX(Math.PI / 2);
+      birdGroup.add(new THREE.Mesh(bodyGeo, birdMat));
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), birdMat);
+      head.position.set(0, 0.1, 0.5);
+      birdGroup.add(head);
+      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.5, 8), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+      beak.geometry.rotateX(Math.PI / 2);
+      beak.position.set(0, 0.05, 0.8);
+      birdGroup.add(beak);
+      const wingGeo = new THREE.PlaneGeometry(1.5, 0.8, 2, 2);
+      wingGeo.translate(0.75, 0, 0);
+      const rightWing = new THREE.Mesh(wingGeo, birdMat);
+      rightWing.position.set(0, 0.1, 0);
+      const leftWing = new THREE.Mesh(wingGeo, birdMat);
+      leftWing.scale.x = -1;
+      leftWing.position.set(0, 0.1, 0);
+      birdGroup.add(rightWing);
+      birdGroup.add(leftWing);
+      birdGroup.position.set((Math.random() - 0.5) * 200, 30 + Math.random() * 50, (Math.random() - 0.5) * 200);
+      birdGroup.rotation.y = Math.random() * Math.PI * 2;
+      scene.add(birdGroup);
+      birds.push({ mesh: birdGroup, rightWing, leftWing, speed: 0.2 + Math.random() * 0.3, flapSpeed: 10 + Math.random() * 10, turnSpeed: (Math.random() - 0.5) * 0.02, baseY: birdGroup.position.y, offset: Math.random() * 100 });
+    }
+
+    // ── Sea Animals ──
+    const seaAnimals: any[] = [];
+    const honuShellMat = new THREE.MeshStandardMaterial({ color: 0x3a4b18, roughness: 0.8, flatShading: true });
+    const honuSkinMat = new THREE.MeshStandardMaterial({ color: 0x556b2f, roughness: 0.7, flatShading: true });
+    const honuBellyMat = new THREE.MeshStandardMaterial({ color: 0xe8ddb5, roughness: 0.8, flatShading: true });
+    for (let i = 0; i < 5; i++) {
+      const honu = new THREE.Group();
+      const shell = new THREE.Mesh(new THREE.SphereGeometry(1.5, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2), honuShellMat);
+      shell.scale.set(1, 0.6, 1.2);
+      honu.add(shell);
+      const belly = new THREE.Mesh(new THREE.CylinderGeometry(1.48, 1.48, 0.1, 12), honuBellyMat);
+      belly.scale.set(1, 1, 1.2);
+      honu.add(belly);
+      const headGeo = new THREE.CapsuleGeometry(0.3, 0.4, 8, 8);
+      headGeo.rotateX(Math.PI / 2);
+      const head = new THREE.Mesh(headGeo, honuSkinMat);
+      head.position.set(0, 0.1, 1.7);
+      honu.add(head);
+      const flipperFrontGeo = new THREE.CapsuleGeometry(0.2, 1.8, 8, 8);
+      flipperFrontGeo.rotateZ(Math.PI / 2);
+      flipperFrontGeo.scale(1, 0.2, 0.5);
+      const flipperBackGeo = new THREE.CapsuleGeometry(0.15, 1.0, 8, 8);
+      flipperBackGeo.rotateZ(Math.PI / 2);
+      flipperBackGeo.scale(1, 0.15, 0.4);
+      const flL = new THREE.Mesh(flipperFrontGeo, honuSkinMat);
+      flL.position.set(-1.2, 0, 0.8);
+      flL.rotation.y = -Math.PI / 4;
+      honu.add(flL);
+      const flR = new THREE.Mesh(flipperFrontGeo, honuSkinMat);
+      flR.position.set(1.2, 0, 0.8);
+      flR.rotation.y = Math.PI / 4;
+      honu.add(flR);
+      const flBackL = new THREE.Mesh(flipperBackGeo, honuSkinMat);
+      flBackL.position.set(-0.8, 0, -1.2);
+      flBackL.rotation.y = Math.PI / 6;
+      honu.add(flBackL);
+      const flBackR = new THREE.Mesh(flipperBackGeo, honuSkinMat);
+      flBackR.position.set(0.8, 0, -1.2);
+      flBackR.rotation.y = -Math.PI / 6;
+      honu.add(flBackR);
+      honu.position.set((Math.random() - 0.5) * 400, -1, 130 + Math.random() * 300);
+      honu.rotation.y = Math.random() * Math.PI * 2;
+      scene.add(honu);
+      seaAnimals.push({ mesh: honu, type: "honu", speed: 0.05 + Math.random() * 0.05, turnSpeed: (Math.random() - 0.5) * 0.01, baseY: -1 - Math.random() * 1.5, animCycle: Math.random() * Math.PI * 2, flipperL: flL, flipperR: flR });
+    }
+
+    const naiaMat = new THREE.MeshStandardMaterial({ color: 0x7393b3, roughness: 0.4, flatShading: true });
+    for (let i = 0; i < 20; i++) {
+      const naia = new THREE.Group();
+      const bodyGeo = new THREE.CapsuleGeometry(0.6, 2.5, 12, 12);
+      bodyGeo.rotateX(Math.PI / 2);
+      naia.add(new THREE.Mesh(bodyGeo, naiaMat));
+      const snoutGeo = new THREE.CapsuleGeometry(0.15, 0.6, 8, 8);
+      snoutGeo.rotateX(Math.PI / 2);
+      const snout = new THREE.Mesh(snoutGeo, naiaMat);
+      snout.position.set(0, -0.1, 1.8);
+      naia.add(snout);
+      const dorsalGeo = new THREE.ConeGeometry(0.3, 1.0, 8);
+      dorsalGeo.rotateX(-0.2);
+      const dorsal = new THREE.Mesh(dorsalGeo, naiaMat);
+      dorsal.position.set(0, 0.8, 0.2);
+      naia.add(dorsal);
+      const pecGeo = new THREE.CapsuleGeometry(0.1, 1.0, 8, 8);
+      pecGeo.rotateZ(Math.PI / 2);
+      pecGeo.scale(1, 0.2, 0.4);
+      const pecL = new THREE.Mesh(pecGeo, naiaMat);
+      pecL.position.set(-0.6, -0.2, 0.8);
+      pecL.rotation.y = -Math.PI / 4;
+      pecL.rotation.z = -0.2;
+      naia.add(pecL);
+      const pecR = new THREE.Mesh(pecGeo, naiaMat);
+      pecR.position.set(0.6, -0.2, 0.8);
+      pecR.rotation.y = Math.PI / 4;
+      pecR.rotation.z = 0.2;
+      naia.add(pecR);
+      const flukeGeo = new THREE.CapsuleGeometry(0.1, 1.8, 8, 8);
+      flukeGeo.rotateZ(Math.PI / 2);
+      flukeGeo.scale(1, 0.2, 0.4);
+      const fluke = new THREE.Mesh(flukeGeo, naiaMat);
+      fluke.position.set(0, 0, -1.8);
+      naia.add(fluke);
+      naia.position.set((Math.random() - 0.5) * 400, -1, 130 + Math.random() * 300);
+      naia.rotation.y = Math.random() * Math.PI * 2;
+      scene.add(naia);
+      seaAnimals.push({ mesh: naia, type: "naia", speed: 0.25 + Math.random() * 0.25, turnSpeed: (Math.random() - 0.5) * 0.02, animCycle: Math.random() * Math.PI * 2, baseY: -2 });
+    }
+
+    // ── Fish schools ──
+    const fishSchools: any[] = [];
+    const schoolColors = [0xffd700, 0x00aaff, 0xff8c00, 0xee55ff];
+    const fishBodyGeo = new THREE.ConeGeometry(0.2, 0.8, 4);
+    fishBodyGeo.rotateX(Math.PI / 2);
+    fishBodyGeo.scale(0.3, 1, 0.8);
+    for (let i = 0; i < 8; i++) {
+      const schoolGroup = new THREE.Group();
+      const schoolColor = schoolColors[Math.floor(Math.random() * schoolColors.length)];
+      const fishMat = new THREE.MeshStandardMaterial({ color: schoolColor, roughness: 0.4, flatShading: true });
+      const numFish = 15 + Math.floor(Math.random() * 15);
+      const fishMeshes: any[] = [];
+      for (let j = 0; j < numFish; j++) {
+        const fish = new THREE.Mesh(fishBodyGeo, fishMat);
+        fish.position.set((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 8);
+        schoolGroup.add(fish);
+        fishMeshes.push({ mesh: fish, offset: Math.random() * Math.PI * 2, baseX: fish.position.x });
+      }
+      schoolGroup.position.set((Math.random() - 0.5) * 200, -1.5 - Math.random() * 2, 95 + Math.random() * 105);
+      schoolGroup.rotation.y = Math.random() * Math.PI * 2;
+      scene.add(schoolGroup);
+      fishSchools.push({ group: schoolGroup, fishes: fishMeshes, speed: 0.03 + Math.random() * 0.04, turnSpeed: (Math.random() - 0.5) * 0.015, baseY: schoolGroup.position.y, animCycle: Math.random() * Math.PI * 2 });
+    }
 
     // ── Particles ──
-    const riverParticleCount = 60;
+    const riverParticleCount = 200;
     const riverParticleGeo = new THREE.BufferGeometry();
     const riverParticlePos = new Float32Array(riverParticleCount * 3);
     const riverParticleData: any[] = [];
@@ -605,6 +750,53 @@ export function MapPage() {
       clouds.forEach((cloud) => {
         cloud.mesh.position.x += cloud.speed;
         if (cloud.mesh.position.x > 600) cloud.mesh.position.x = -600;
+      });
+
+      // Birds
+      birds.forEach((bird) => {
+        const bTime = time + bird.offset;
+        bird.mesh.position.x += Math.cos(bird.mesh.rotation.y) * bird.speed;
+        bird.mesh.position.z += Math.sin(bird.mesh.rotation.y) * bird.speed;
+        bird.mesh.position.y = bird.baseY + Math.sin(bTime * 0.5) * 3;
+        bird.mesh.rotation.y += bird.turnSpeed;
+        bird.rightWing.rotation.x = Math.sin(bTime * bird.flapSpeed) * 0.6;
+        bird.leftWing.rotation.x = Math.sin(bTime * bird.flapSpeed) * 0.6;
+        if (Math.abs(bird.mesh.position.x) > 300 || Math.abs(bird.mesh.position.z) > 300) {
+          bird.mesh.rotation.y += Math.PI;
+        }
+      });
+
+      // Sea animals
+      seaAnimals.forEach((sa) => {
+        const sTime = time + sa.animCycle;
+        sa.mesh.position.x += Math.cos(sa.mesh.rotation.y) * sa.speed;
+        sa.mesh.position.z += Math.sin(sa.mesh.rotation.y) * sa.speed;
+        sa.mesh.rotation.y += sa.turnSpeed;
+        sa.mesh.position.y = sa.baseY + Math.sin(sTime) * 0.3;
+        if (sa.type === "honu") {
+          sa.flipperL.rotation.z = Math.sin(sTime * 2) * 0.3;
+          sa.flipperR.rotation.z = Math.sin(sTime * 2 + Math.PI) * 0.3;
+        } else if (sa.type === "naia") {
+          sa.mesh.rotation.z = Math.sin(sTime * 3) * 0.05;
+        }
+        if (Math.abs(sa.mesh.position.x) > 300 || Math.abs(sa.mesh.position.z) > 400) {
+          sa.mesh.rotation.y += Math.PI + (Math.random() - 0.5);
+        }
+      });
+
+      // Fish schools
+      fishSchools.forEach((school) => {
+        const sTime = time + school.animCycle;
+        school.group.position.x += Math.cos(school.group.rotation.y) * school.speed;
+        school.group.position.z += Math.sin(school.group.rotation.y) * school.speed;
+        school.group.rotation.y += school.turnSpeed;
+        school.group.position.y = school.baseY + Math.sin(sTime) * 0.5;
+        school.fishes.forEach((fish: any) => {
+          fish.mesh.position.x = fish.baseX + Math.sin(sTime * 2 + fish.offset) * 0.5;
+        });
+        if (Math.abs(school.group.position.x) > 250 || Math.abs(school.group.position.z) > 250) {
+          school.group.rotation.y += Math.PI;
+        }
       });
 
       // River particles
