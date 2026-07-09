@@ -44,12 +44,13 @@ export function PlantIndexPage() {
         searchBg: 'rgba(255,255,255,0.10)',
         searchBorder: 'rgba(255,255,255,0.12)',
         searchIcon: 'rgba(255,255,255,0.35)',
-        detailBg: '#F6F1E7',
-        tagBg: 'rgba(47,111,78,0.12)',
-        tagText: '#2F6F4E',
-        infoText: 'rgba(38,52,47,0.70)',
-        sectionText: 'rgba(38,52,47,0.55)',
-        rarityBg: 'rgba(47,111,78,0.10)',
+        detailBg: '#245238',
+        detailTitle: '#ffffff',
+        tagBg: 'rgba(255,255,255,0.10)',
+        tagText: '#7BC96F',
+        infoText: 'rgba(255,255,255,0.70)',
+        sectionText: 'rgba(255,255,255,0.55)',
+        rarityBg: 'rgba(255,255,255,0.10)',
       }
     : {
         bg: '#F6F1E7',
@@ -72,6 +73,7 @@ export function PlantIndexPage() {
         searchBorder: 'rgba(47,111,78,0.12)',
         searchIcon: 'rgba(47,111,78,0.50)',
         detailBg: '#F6F1E7',
+        detailTitle: '#26342F',
         tagBg: 'rgba(47,111,78,0.12)',
         tagText: '#2F6F4E',
         infoText: 'rgba(38,52,47,0.70)',
@@ -287,7 +289,7 @@ export function PlantIndexPage() {
                 </span>
               </div>
 
-              <h2 className="text-4xl font-extrabold mb-1 leading-tight" style={{ color: '#26342F' }}>
+              <h2 className="text-4xl font-extrabold mb-1 leading-tight" style={{ color: t.detailTitle }}>
                 {selected.name}
               </h2>
               <p className="text-sm italic font-semibold mb-5" style={{ color: t.infoText }}>

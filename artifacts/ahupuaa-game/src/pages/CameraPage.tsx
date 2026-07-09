@@ -37,7 +37,7 @@ function findPlantByLabel(label: string): Plant | null {
 type ScanState = "idle" | "scanning" | "flashing" | "classifying" | "done" | "unknown" | "error";
 
 export function CameraPage() {
-  const { collectPlant, incrementScanCount } = useGame();
+  const { collectPlant, incrementScanCount, darkMode } = useGame();
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -336,7 +336,7 @@ export function CameraPage() {
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 220 }}
             className="absolute inset-x-0 bottom-0 z-50 rounded-t-[2rem] overflow-hidden flex flex-col"
-            style={{ background: '#F6F1E7', height: '75%' }}
+            style={{ background: darkMode ? '#2A6042' : '#F6F1E7', height: '75%' }}
           >
             {/* Plant image strip */}
             <div className="relative h-28 flex-shrink-0 overflow-hidden rounded-t-[2rem]">
@@ -346,9 +346,17 @@ export function CameraPage() {
                 className="w-full h-full object-cover"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#F6F1E7] to-transparent" />
+              <div
+                className="absolute inset-0"
+                style={{ background: `linear-gradient(to top, ${darkMode ? '#2A6042' : '#F6F1E7'}, transparent)` }}
+              />
               <div className="absolute bottom-2 inset-x-0 flex items-end justify-center gap-2 px-5">
-                <h2 className="text-[#26342F] font-extrabold text-2xl leading-tight">{foundPlant.name}</h2>
+                <h2
+                  className="font-extrabold text-2xl leading-tight"
+                  style={{ color: darkMode ? '#ffffff' : '#26342F' }}
+                >
+                  {foundPlant.name}
+                </h2>
                 <div className="w-6 h-6 rounded-full bg-[#5CC882] flex items-center justify-center flex-shrink-0 mb-0.5">
                   <Check size={14} color="#1A3828" />
                 </div>
@@ -357,18 +365,40 @@ export function CameraPage() {
 
             {/* Scrollable body */}
             <div className="flex-1 overflow-y-auto px-5 pt-1 pb-4">
-              <p className="text-[#26342F]/50 text-xs font-semibold italic mb-3">{foundPlant.scientific}</p>
+              <p
+                className="text-xs font-semibold italic mb-3"
+                style={{ color: darkMode ? 'rgba(255,255,255,0.45)' : 'rgba(38,52,47,0.50)' }}
+              >
+                {foundPlant.scientific}
+              </p>
 
               {debugLabel && (
-                <p className="text-[#2F6F4E] text-xs font-bold mb-3">AI match: {debugLabel}</p>
+                <p
+                  className="text-xs font-bold mb-3"
+                  style={{ color: darkMode ? '#7BC96F' : '#2F6F4E' }}
+                >
+                  AI match: {debugLabel}
+                </p>
               )}
 
               {/* Category tags */}
               <div className="flex flex-wrap gap-1.5 mb-3">
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-[#2F6F4E]/10 text-[#2F6F4E]">
+                <span
+                  className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide"
+                  style={{
+                    background: darkMode ? 'rgba(255,255,255,0.10)' : 'rgba(47,111,78,0.10)',
+                    color: darkMode ? '#7BC96F' : '#2F6F4E',
+                  }}
+                >
                   {foundPlant.zone === 'uka' ? 'Uka · Mountain' : foundPlant.zone === 'kula' ? 'Kula · Lowland' : 'Kai · Coastal'}
                 </span>
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-[#5CC882]/15 text-[#2F6F4E]">
+                <span
+                  className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide"
+                  style={{
+                    background: darkMode ? 'rgba(123,201,111,0.15)' : 'rgba(92,200,130,0.15)',
+                    color: darkMode ? '#7BC96F' : '#2F6F4E',
+                  }}
+                >
                   {foundPlant.category}
                 </span>
                 {foundPlant.rarity && foundPlant.rarity.toLowerCase().includes('rare') && (
@@ -379,19 +409,29 @@ export function CameraPage() {
               </div>
 
               {/* Description */}
-              <p className="text-[#26342F]/70 text-xs leading-relaxed mb-4">{foundPlant.description}</p>
+              <p
+                className="text-xs leading-relaxed mb-4"
+                style={{ color: darkMode ? 'rgba(255,255,255,0.65)' : 'rgba(38,52,47,0.70)' }}
+              >
+                {foundPlant.description}
+              </p>
 
               {/* Buttons */}
               <div className="flex flex-col gap-2">
                 <button
                   onClick={collect}
-                  className="w-full py-3 rounded-2xl bg-[#2F6F4E] text-white font-extrabold text-sm shadow-md active:scale-[0.98] transition-transform"
+                  className="w-full py-3 rounded-2xl font-extrabold text-sm shadow-md active:scale-[0.98] transition-transform"
+                  style={{ background: darkMode ? '#5CC882' : '#2F6F4E', color: darkMode ? '#1A3828' : '#ffffff' }}
                 >
                   Add to Inventory
                 </button>
                 <button
                   onClick={closeResult}
-                  className="w-full py-3 rounded-2xl border border-[#26342F]/20 text-[#26342F]/60 font-bold text-sm active:scale-[0.98] transition-transform"
+                  className="w-full py-3 rounded-2xl font-bold text-sm active:scale-[0.98] transition-transform"
+                  style={{
+                    border: `1px solid ${darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(38,52,47,0.20)'}`,
+                    color: darkMode ? 'rgba(255,255,255,0.50)' : 'rgba(38,52,47,0.60)',
+                  }}
                 >
                   Discard
                 </button>
@@ -410,27 +450,42 @@ export function CameraPage() {
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 220 }}
             className="absolute inset-x-0 bottom-0 z-50 rounded-t-[2rem] overflow-hidden flex flex-col"
-            style={{ background: '#F6F1E7', height: '75%' }}
+            style={{ background: darkMode ? '#2A6042' : '#F6F1E7', height: '75%' }}
           >
             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center pb-4">
-              <div className="w-16 h-16 rounded-full bg-[#E8E4DB] flex items-center justify-center mb-4">
-                <Frown size={32} color="#999" />
+              <div
+                className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                style={{ background: darkMode ? 'rgba(255,255,255,0.10)' : '#E8E4DB' }}
+              >
+                <Frown size={32} color={darkMode ? 'rgba(255,255,255,0.40)' : '#999'} />
               </div>
-              <h2 className="text-[#26342F] font-extrabold text-xl mb-2">
+              <h2
+                className="font-extrabold text-xl mb-2"
+                style={{ color: darkMode ? '#ffffff' : '#26342F' }}
+              >
                 {scanState === "error" ? "Something went wrong" : "Plant not identified"}
               </h2>
-              <p className="text-[#26342F]/60 text-sm leading-relaxed max-w-xs mb-6">
+              <p
+                className="text-sm leading-relaxed max-w-xs mb-6"
+                style={{ color: darkMode ? 'rgba(255,255,255,0.55)' : 'rgba(38,52,47,0.60)' }}
+              >
                 {errorMessage ??
                   (scanState === "error"
                     ? "Couldn\u2019t reach the identification server. Check your connection and try again."
                     : "Try again with better lighting, a closer angle, or make sure the leaf fills the frame.")}
               </p>
               {debugLabel && (
-                <p className="text-[#26342F]/35 text-xs mb-5">{debugLabel}</p>
+                <p
+                  className="text-xs mb-5"
+                  style={{ color: darkMode ? 'rgba(255,255,255,0.30)' : 'rgba(38,52,47,0.35)' }}
+                >
+                  {debugLabel}
+                </p>
               )}
               <button
                 onClick={closeResult}
-                className="w-full py-3.5 rounded-2xl bg-[#2F6F4E] text-white font-extrabold text-base shadow-lg active:scale-[0.98] transition-transform"
+                className="w-full py-3.5 rounded-2xl font-extrabold text-base shadow-lg active:scale-[0.98] transition-transform"
+                style={{ background: darkMode ? '#5CC882' : '#2F6F4E', color: darkMode ? '#1A3828' : '#ffffff' }}
               >
                 Back to Scan
               </button>

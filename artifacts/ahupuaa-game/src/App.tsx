@@ -14,7 +14,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AnimatePresence, motion } from "framer-motion";
 
 function MainApp() {
-  const { currentView } = useGame();
+  const { currentView, darkMode } = useGame();
 
   const renderView = () => {
     switch (currentView) {
@@ -30,7 +30,10 @@ function MainApp() {
   };
 
   return (
-    <div className="w-full h-[100dvh] max-w-[430px] mx-auto bg-black relative overflow-hidden flex flex-col font-sans">
+    <div
+      className="w-full h-[100dvh] max-w-[430px] mx-auto relative overflow-hidden flex flex-col font-sans"
+      style={{ background: darkMode ? '#245238' : '#F6F1E7' }}
+    >
       <AnimatePresence mode="wait">
         <motion.div
           key={currentView}
