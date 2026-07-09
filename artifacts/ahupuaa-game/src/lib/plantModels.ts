@@ -1718,12 +1718,6 @@ export function buildPlantModel(plantId: string): THREE.Group {
       group.scale.set(0.35, 0.35, 0.35);
       break;
     }
-    case "palapalai": {
-      const palapalai = createPalapalai();
-      group.add(palapalai);
-      group.scale.set(0.35, 0.35, 0.35);
-      break;
-    }
     case "hapuu": {
       const hapuu = createHapuu();
       group.add(hapuu);
@@ -1734,25 +1728,6 @@ export function buildPlantModel(plantId: string): THREE.Group {
       const loulu = createLoulu();
       group.add(loulu);
       group.scale.set(2.0, 2.0, 2.0);
-      break;
-    }
-    case "ilima": {
-      const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3, 0), plantMat);
-      bush.position.y = 0.2;
-      bush.scale.set(1, 0.7, 1);
-      group.add(bush);
-      for (let i = 0; i < 4; i++) {
-        const flower = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), new THREE.MeshStandardMaterial({ color: 0xFFD700, roughness: 0.5 }));
-        flower.position.set((Math.random() - 0.5) * 0.4, 0.4 + Math.random() * 0.2, (Math.random() - 0.5) * 0.4);
-        group.add(flower);
-      }
-      group.scale.set(0.35, 0.35, 0.35);
-      break;
-    }
-    case "aalii": {
-      const aalii = createAalii();
-      group.add(aalii);
-      group.scale.set(0.35, 0.35, 0.35);
       break;
     }
     case "ulu": {
