@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { loadWeeklyState, saveWeeklyState, checkTasks, WeeklyState } from './weeklyTasks';
 import { PLANT_DATA, PlantData } from './plantData';
+import { loadGameSave, saveGameData } from './AuthContext';
 
 export type Zone = 'uka' | 'kula' | 'kai';
 
@@ -31,11 +32,11 @@ export type ViewState = 'ahupuaa' | 'camera' | 'piko' | 'plant_index' | 'tasks' 
 export type PlacedPlant = {
   plantId: string;
   zone: Zone;
-  x?: number; // screen % left (0-100)
-  y?: number; // screen % top (0-100)
-  wx?: number; // world x
-  wy?: number; // world y
-  wz?: number; // world z
+  x?: number;
+  y?: number;
+  wx?: number;
+  wy?: number;
+  wz?: number;
 };
 
 interface GameContextType {
@@ -56,43 +57,67 @@ interface GameContextType {
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
-export function GameProvider({ children }: { children: ReactNode }) {
-  const [currentView, setCurrentView] = useState<ViewState>('ahupuaa');
-  const [collectedPlants, setCollectedPlants] = useState<string[]>(
-    PLANT_DATABASE.map(p => p.id)
-  );
-  const [inventory, setInventory] = useState<Plant[]>(
-    PLANT_DATABASE.flatMap(p => [p, p])
-  );
-  const [placedPlants, setPlacedPlants] = useState<PlacedPlant[]>([]);
-  const [darkMode, setDarkMode] = useState(true);
-  const [weeklyState, setWeeklyState] = useState<WeeklyState>(() => loadWeeklyState());
+export function GameProvider({ children, username }: { children: ReactNode; username: string | null }) {
+  // Load saved state for this user (or start fresh)
+  const savedState = username ? loadGameSave(username) : null;
 
-  /* Weekly tasks: login count + re-check completion */
+  const [currentView, setCurrentView] = useState<ViewState>('ahupuaa');
+
+  const [collectedPlants, setCollectedPlants] = useState<string[]>(
+    savedState?.collectedPlants ?? []
+  );
+
+  const [inventory, setInventory] = useState<Plant[]>(() => {
+    const ids = savedState?.inventoryIds ?? [];
+    return ids
+      .map(id => PLANT_DATABASE.find(p => p.id === id))
+      .filter((p): p is Plant => p !== undefined);
+  });
+
+  const [placedPlants, setPlacedPlants] = useState<PlacedPlant[]>(
+    savedState?.placedPlants ?? []
+  );
+
+  const [darkMode, setDarkMode] = useState(true);
+
+  const [weeklyState, setWeeklyState] = useState<WeeklyState>(
+    () => loadWeeklyState(username ?? undefined)
+  );
+
+  // Auto-save game data whenever core state changes
+  useEffect(() => {
+    if (!username) return;
+    saveGameData(username, {
+      collectedPlants,
+      inventoryIds: inventory.map(p => p.id),
+      placedPlants,
+    });
+  }, [username, collectedPlants, inventory, placedPlants]);
+
+  // Weekly tasks: login count + re-check completion
   useEffect(() => {
     setWeeklyState(prev => {
       const incremented = { ...prev, loginCount: prev.loginCount + 1 };
       const checked = checkTasks(incremented, collectedPlants, placedPlants);
-      saveWeeklyState(checked);
+      saveWeeklyState(checked, username ?? undefined);
       return checked;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* Re-check tasks whenever game state changes */
+  // Re-check tasks whenever game state changes
   useEffect(() => {
     setWeeklyState(prev => {
       const checked = checkTasks(prev, collectedPlants, placedPlants);
-      saveWeeklyState(checked);
+      saveWeeklyState(checked, username ?? undefined);
       return checked;
     });
-  }, [collectedPlants, placedPlants]);
+  }, [collectedPlants, placedPlants, username]);
 
   const collectPlant = (plant: Plant) => {
-    setCollectedPlants(prev => {
-      const next = prev.includes(plant.id) ? prev : [...prev, plant.id];
-      return next;
-    });
+    setCollectedPlants(prev =>
+      prev.includes(plant.id) ? prev : [...prev, plant.id]
+    );
     setInventory(prev => [...prev, plant]);
   };
 
@@ -118,10 +143,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setWeeklyState(prev => {
       const next = { ...prev, scanCount: prev.scanCount + 1 };
       const checked = checkTasks(next, collectedPlants, placedPlants);
-      saveWeeklyState(checked);
+      saveWeeklyState(checked, username ?? undefined);
       return checked;
     });
-  }, [collectedPlants, placedPlants]);
+  }, [collectedPlants, placedPlants, username]);
 
   const removePlacedPlant = useCallback((index: number) => {
     setPlacedPlants(prev => prev.filter((_, i) => i !== index));
@@ -131,18 +156,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const limu = PLANT_DATABASE.find(p => p.id === 'limu');
     if (!limu) return;
 
-    setCollectedPlants(prev => {
-      const next = prev.includes('limu') ? prev : [...prev, 'limu'];
-      return next;
-    });
+    setCollectedPlants(prev =>
+      prev.includes('limu') ? prev : [...prev, 'limu']
+    );
     setInventory(prev => [...prev, limu]);
 
     setWeeklyState(prev => {
       const next = { ...prev, rewardClaimed: true };
-      saveWeeklyState(next);
+      saveWeeklyState(next, username ?? undefined);
       return next;
     });
-  }, []);
+  }, [username]);
 
   return (
     <GameContext.Provider

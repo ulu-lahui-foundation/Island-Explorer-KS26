@@ -26,7 +26,11 @@ export type WeeklyState = {
   poolHash: string;
 };
 
-const STORAGE_KEY = 'ahupuaa_weekly_tasks_v2';
+const STORAGE_KEY_PREFIX = 'ahupuaa_weekly_v2_';
+
+function storageKey(username?: string) {
+  return STORAGE_KEY_PREFIX + (username ?? 'global');
+}
 
 function getWeekStart(): string {
   const d = new Date();
@@ -43,7 +47,7 @@ const TASK_POOL: Omit<WeeklyTask, 'id' | 'current' | 'completed'>[] = [
   { type: 'scan_count',  title: 'Scan 5 plants',                  target: 5 },
   { type: 'login',       title: 'Log in 5 times',                  target: 5 },
   { type: 'collect_plant', title: 'Collect Kalo',                 target: 1, plantId: 'kalo' },
-  { type: 'collect_plant', title: 'Collect \u02bb\u014chi\u02bba Lehua', target: 1, plantId: 'ohia' },
+  { type: 'collect_plant', title: 'Collect ʻŌhiʻa Lehua', target: 1, plantId: 'ohia' },
   { type: 'all_zones',   title: 'Plant in all 3 zones',            target: 1 },
   { type: 'login',       title: 'Log in to game 5 Times',           target: 5 },
 ];
@@ -67,16 +71,16 @@ function generateTasks(): WeeklyTask[] {
   }));
 }
 
-export function loadWeeklyState(): WeeklyState {
+export function loadWeeklyState(username?: string): WeeklyState {
   const currentWeek = getWeekStart();
   const currentHash = getPoolHash();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey(username));
     if (raw) {
       const parsed = JSON.parse(raw) as WeeklyState;
       if (parsed.weekStart === currentWeek && parsed.poolHash === currentHash) return parsed;
     }
-  } catch {}
+  } catch { /* ignore */ }
   return {
     weekStart: currentWeek,
     loginCount: 0,
@@ -87,8 +91,8 @@ export function loadWeeklyState(): WeeklyState {
   };
 }
 
-export function saveWeeklyState(state: WeeklyState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+export function saveWeeklyState(state: WeeklyState, username?: string) {
+  localStorage.setItem(storageKey(username), JSON.stringify(state));
 }
 
 export function checkTasks(

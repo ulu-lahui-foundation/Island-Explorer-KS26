@@ -1,0 +1,22 @@
+dd an authentication pop-up (Create Account / Sign In) to the existing Native Hawaiian plant identification game.
+Requirements for the Auth System:
+Initial Pop-up (On Load): When the app opens, if no user is currently signed in, display a modal/pop-up asking the user to either "Sign In" or "Create Account".
+UI & Styling: The modal should hit a "Goldilocks" level of detail—not too complex, not too simple. It MUST inherit the game's existing CSS classes, color scheme, typography, and overall art style so it feels native to the app.
+The Existing Profile Button: Keep the current "User Profile" button exactly where it is. When clicked:
+If a user is signed in: It opens the user profile view (showing tasks, plants, ahupuaʻa, etc.) as previously built, but add a "Sign Out" button to this view.
+If a user is NOT signed in: It opens the Auth Pop-up.
+Mock Database / Test Accounts: Create a hardcoded array of test accounts that I can use immediately without setting up a real backend.make about 15 and make sure i can see all there usernames and passwords after loging in.
+Data Integration: Update the localStorage save/load logic so that game progress (plants collected, tasks, ahupuaʻa state) is saved under the specific username of the currently signed-in player, rather than a global save file. When a test account signs in, load their specific data.
+Please implement this cleanly without breaking the core gameplay loop.
+Task: Add a persistent "User Profile" feature to my existing Native Hawaiian plant identification game. Do not change or add any new core gameplay mechanics. I only need the profile interface and the storage logic to save/load existing game data.
+Requirements for the User Profile:
+Data Tracking: The profile must accurately track, save, and display the following existing data:
+Completed tasks.
+Plants collected (total historical collection).
+Customized ahupuaʻa (current state/layout/customizations).
+Currently captured plants (current inventory).
+Persistence: Implement a save/load system (using localStorage if this is a purely frontend app, or integrating with my existing backend/database if one exists) so the user's profile and progress persist across browser refreshes and sessions.
+Profile UI: Create a clean interface (like a modal, side panel, or separate menu screen) to display this data.
+Access: Add a "User Profile" button to the main game UI that opens this profile view.
+Integration: Hook this profile system up to my existing variables and state management. Ensure that whenever the player completes a task, collects a plant, or updates their ahupuaʻa in the game, the profile data automatically updates and saves.
+Please review my existing code to understand how plants and tasks are currently handled, and implement the profile feature to match my current stack and styling.

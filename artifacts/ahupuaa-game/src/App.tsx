@@ -1,5 +1,8 @@
+import { useEffect, useState } from "react";
+import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import { GameProvider, useGame } from "@/lib/GameContext";
 import { Navigation } from "@/components/Navigation";
+import { AuthModal } from "@/components/AuthModal";
 import { MapPage } from "@/pages/MapPage";
 import { CameraPage } from "@/pages/CameraPage";
 import { PikoPage } from "@/pages/PikoPage";
@@ -15,14 +18,14 @@ function MainApp() {
 
   const renderView = () => {
     switch (currentView) {
-      case 'ahupuaa': return <MapPage key="ahupuaa" />;
-      case 'camera': return <CameraPage key="camera" />;
-      case 'piko': return <PikoPage key="piko" />;
+      case 'ahupuaa':     return <MapPage key="ahupuaa" />;
+      case 'camera':      return <CameraPage key="camera" />;
+      case 'piko':        return <PikoPage key="piko" />;
       case 'plant_index': return <PlantIndexPage key="plant_index" />;
-      case 'tasks': return <TasksPage key="tasks" />;
-      case 'settings': return <SettingsPage key="settings" />;
-      case 'about': return <AboutPage key="about" />;
-      default: return <MapPage key="default" />;
+      case 'tasks':       return <TasksPage key="tasks" />;
+      case 'settings':    return <SettingsPage key="settings" />;
+      case 'about':       return <AboutPage key="about" />;
+      default:            return <MapPage key="default" />;
     }
   };
 
@@ -45,12 +48,37 @@ function MainApp() {
   );
 }
 
+function AuthGatedApp() {
+  const { currentUser } = useAuth();
+  const [showAuth, setShowAuth] = useState(!currentUser);
+
+  // Re-show auth modal when user signs out
+  useEffect(() => {
+    if (!currentUser) setShowAuth(true);
+  }, [currentUser]);
+
+  return (
+    <>
+      {/* Key on currentUser so GameProvider remounts fresh for each account */}
+      <GameProvider key={currentUser ?? '__signed_out__'} username={currentUser}>
+        <MainApp />
+        <Toaster />
+      </GameProvider>
+
+      <AnimatePresence>
+        {showAuth && (
+          <AuthModal onSuccess={() => setShowAuth(false)} />
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
 function App() {
   return (
-    <GameProvider>
-      <MainApp />
-      <Toaster />
-    </GameProvider>
+    <AuthProvider>
+      <AuthGatedApp />
+    </AuthProvider>
   );
 }
 
