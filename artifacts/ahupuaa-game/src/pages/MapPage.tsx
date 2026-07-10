@@ -716,21 +716,14 @@ export function MapPage() {
           controls.enableRotate = false;
         }
       } else if (zoomTarget && !zoomTarget.active) {
-        // Returning to overview
-        const s = sceneRef.current;
-        if (s) {
-          const cam = s.camera;
-          const overviewPos = new THREE.Vector3(0, 200, 400);
-          const overviewTarget = new THREE.Vector3(0, 0, 0);
-          cam.position.lerp(overviewPos, 0.04);
-          controls.target.lerp(overviewTarget, 0.04);
-          controls.update();
-          if (cam.position.distanceTo(overviewPos) < 2) {
-            cameraTargetRef.current = null;
-            controls.enablePan = true;
-            controls.enableZoom = true;
-            controls.enableRotate = true;
-          }
+        // Returning to overview — controls already re-enabled at deselect time;
+        // just smoothly move the camera position back without fighting user input
+        const cam = camera;
+        const overviewPos = new THREE.Vector3(0, 200, 400);
+        cam.position.lerp(overviewPos, 0.06);
+        controls.update();
+        if (cam.position.distanceTo(overviewPos) < 5) {
+          cameraTargetRef.current = null;
         }
       }
 
@@ -840,13 +833,20 @@ export function MapPage() {
     // Canvas tap handler: bounding-sphere check instead of recursive mesh raycast
     const onCanvasTap = (e: PointerEvent) => {
       const s = sceneRef.current;
-      if (!s || s.spawnedPlants.length === 0) return;
+      if (!s) return;
       // If zoomed in, tapping empty ground zooms back out
       if (cameraTargetRef.current?.active) {
         cameraTargetRef.current.active = false;
+        // Re-enable controls immediately — don't make user wait for the lerp to finish
+        controls.enablePan = true;
+        controls.enableZoom = true;
+        controls.enableRotate = true;
+        controls.target.set(0, 0, 0);
+        controls.update();
         setSelectedPlantIdx(null);
         return;
       }
+      if (s.spawnedPlants.length === 0) return;
       const rect = s.renderer.domElement.getBoundingClientRect();
       s.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       s.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -1049,11 +1049,19 @@ export function MapPage() {
 
   const handleDigUp = () => {
     if (selectedPlantIdx !== null) {
-      // Start smooth zoom-out before removing plant
       if (cameraTargetRef.current) {
         cameraTargetRef.current.active = false;
       }
-      sceneRef.current?.removePlant3D(selectedPlantIdx);
+      // Re-enable controls immediately so the user isn't locked out after digging
+      const s = sceneRef.current;
+      if (s) {
+        s.controls.enablePan = true;
+        s.controls.enableZoom = true;
+        s.controls.enableRotate = true;
+        s.controls.target.set(0, 0, 0);
+        s.controls.update();
+      }
+      s?.removePlant3D(selectedPlantIdx);
       removePlacedPlant(selectedPlantIdx);
     }
     setSelectedPlantIdx(null);
