@@ -672,6 +672,28 @@ export function MapPage() {
       const sphere = new THREE.Sphere();
       box.getBoundingSphere(sphere);
       plantBoundingSpheres.push(sphere);
+
+      // Subtle white outline ring at plant base — child of group so it's
+      // automatically removed when the group is removed from the scene
+      const scaleF = group.scale.x;
+      const worldRingOuter = Math.min(sphere.radius * 0.38, 10);
+      const localOuter = worldRingOuter / scaleF;
+      const localInner = localOuter * 0.70;
+      const ringGeo = new THREE.RingGeometry(localInner, localOuter, 36);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.30,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -4,
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.y = 0.3 / scaleF;
+      group.add(ring);
     };
 
     const removePlant3D = (index: number) => {
