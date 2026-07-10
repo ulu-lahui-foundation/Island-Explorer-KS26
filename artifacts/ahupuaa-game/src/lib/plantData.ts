@@ -133,7 +133,7 @@ export const PLANT_DATA: PlantData[] = [
     name: 'ʻAʻaliʻi',
     scientific: 'Dodonaea viscosa',
     zone: 'kula',
-    image: '/plants/aaliia.jpg',
+    image: '/plants/aalii.jpg',
     description: 'Highly resilient shrub or small tree with sticky leaves and showy, papery, multi-winged seed capsules that range from cream to deep red/pink.',
     distribution: 'Extremely adaptive; found from coastal dunes to alpine scrub zones on all main islands.',
     landscape: 'Excellent for windbreaks, erosion control, or mass hillside plantings.',
