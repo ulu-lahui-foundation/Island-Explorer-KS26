@@ -1237,15 +1237,15 @@ export function MapPage() {
 
       {/* Zone labels overlay */}
       <div className="absolute inset-0 pointer-events-none z-10">
-        <div className="absolute top-[6%] right-4 px-3 py-1 rounded-full text-xs font-bold"
+        <div className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold"
           style={{ background: "rgba(246,241,231,0.18)", backdropFilter: "blur(8px)", color: "#F6F1E7" }}>
           Uka
         </div>
-        <div className="absolute top-[38%] right-4 px-3 py-1 rounded-full text-xs font-bold"
+        <div className="absolute top-[40%] right-4 px-3 py-1 rounded-full text-xs font-bold"
           style={{ background: "rgba(246,241,231,0.18)", backdropFilter: "blur(8px)", color: "#F6F1E7" }}>
           Kula
         </div>
-        <div className="absolute bottom-[8%] right-4 px-3 py-1 rounded-full text-xs font-bold"
+        <div className="absolute bottom-[30%] right-4 px-3 py-1 rounded-full text-xs font-bold"
           style={{ background: "rgba(246,241,231,0.18)", backdropFilter: "blur(8px)", color: "#F6F1E7" }}>
           Kai
         </div>
