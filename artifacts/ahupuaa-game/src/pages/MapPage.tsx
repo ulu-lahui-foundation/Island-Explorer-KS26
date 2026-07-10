@@ -470,8 +470,8 @@ export function MapPage() {
         puff.position.set((Math.random() - 0.5) * 15, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 15);
         const s = 4 + Math.random() * 8;
         puff.scale.set(s, s, s);
-        puff.castShadow = true;
-        puff.receiveShadow = true;
+        puff.castShadow = false;
+        puff.receiveShadow = false;
         cloud.add(puff);
       }
       cloud.position.set((Math.random() - 0.5) * 1000, 120 + Math.random() * 60, (Math.random() - 0.5) * 1000);
