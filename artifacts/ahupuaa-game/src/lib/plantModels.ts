@@ -1763,13 +1763,13 @@ export function buildPlantModel(plantId: string): THREE.Group {
     case "pohinahina": {
       const pohinahina = createPohinahina();
       group.add(pohinahina);
-      group.scale.set(0.35, 0.35, 0.35);
+      group.scale.set(0.45, 0.45, 0.45);
       break;
     }
     case "kupukupu": {
       const fern = createKupukupuFern();
       group.add(fern);
-      group.scale.set(0.35, 0.35, 0.35);
+      group.scale.set(0.45, 0.45, 0.45);
       break;
     }
     case "hapuu": {
