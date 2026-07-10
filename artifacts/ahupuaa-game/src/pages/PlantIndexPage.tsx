@@ -81,11 +81,18 @@ export function PlantIndexPage() {
         rarityBg: 'rgba(47,111,78,0.10)',
       };
 
-  const filtered = PLANT_DATABASE.filter(plant => {
-    if (search && !plant.name.toLowerCase().includes(search.toLowerCase())) return false;
-    if (filter !== "All" && plant.category !== filter) return false;
-    return true;
-  });
+  const filtered = PLANT_DATABASE
+    .filter(plant => {
+      if (search && !plant.name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (filter !== "All" && plant.category !== filter) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const aFound = collectedPlants.includes(a.id);
+      const bFound = collectedPlants.includes(b.id);
+      if (aFound === bFound) return 0;
+      return aFound ? -1 : 1;
+    });
 
   const discovered = collectedPlants.length;
   const total      = PLANT_DATABASE.length;
