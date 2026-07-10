@@ -61,7 +61,7 @@ export function AboutPage() {
             <h2 className="text-xl font-bold" style={{ color: t.title }}>Our Mission</h2>
           </div>
           <p className="text-sm leading-relaxed font-medium" style={{ color: t.sub }}>
-            Ahupua\u02bba Explorer was built to help keiki (children) connect with the land
+            ʻŌiwi Observer was built to help keiki (children) connect with the land
             through the lens of the ahupua\u02bba — the traditional Hawaiian land-division system
             that stretches from mountain to sea.
           </p>

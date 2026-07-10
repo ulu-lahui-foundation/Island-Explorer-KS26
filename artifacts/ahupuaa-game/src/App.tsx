@@ -47,13 +47,13 @@ function SplashScreen({ onStart }: { onStart: () => void }) {
           className="text-4xl font-extrabold text-center leading-tight mb-2"
           style={{ color: '#ffffff', letterSpacing: '-0.02em' }}
         >
-          Ahupuaʻa
+          ʻŌiwi
         </h1>
         <h1
           className="text-4xl font-extrabold text-center leading-tight mb-3"
           style={{ color: '#5CC882', letterSpacing: '-0.02em' }}
         >
-          Game
+          Observer
         </h1>
 
         <p

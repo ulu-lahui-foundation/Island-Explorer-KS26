@@ -74,7 +74,7 @@ export function AuthModal({ onSuccess }: Props) {
             <Leaf size={32} style={{ color: '#7BC96F' }} />
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: '#F6F1E7' }}>
-            Ahupuaʻa Explorer
+            ʻŌiwi Observer
           </h1>
           <p className="text-sm mt-1 font-medium" style={{ color: 'rgba(246,241,231,0.50)' }}>
             Sign in to save your progress
