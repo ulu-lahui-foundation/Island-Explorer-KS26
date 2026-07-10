@@ -2,7 +2,7 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import { useGame, Zone, PLANT_DATABASE, Plant } from "@/lib/GameContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Leaf } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+
 import * as THREE from "three";
 import { buildPlantModel } from "@/lib/plantModels";
 import { PlantPreview } from "@/components/PlantPreview";
@@ -39,7 +39,14 @@ export function MapPage() {
   const { inventory, placedPlants, placePlant, removePlacedPlant } = useGame();
   const [selectedPlantIdx, setSelectedPlantIdx] = useState<number | null>(null);
   const [inventoryOpen, setInventoryOpen] = useState(false);
-  const { toast } = useToast();
+  const [zoneError, setZoneError] = useState<string | null>(null);
+  const zoneErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showZoneError = useCallback((msg: string) => {
+    if (zoneErrorTimer.current) clearTimeout(zoneErrorTimer.current);
+    setZoneError(msg);
+    zoneErrorTimer.current = setTimeout(() => setZoneError(null), 3000);
+  }, []);
 
   const [webglAvailable, setWebglAvailable] = useState<boolean | null>(null);
 
@@ -932,11 +939,8 @@ export function MapPage() {
 
         const expected = getExpectedZone(plantId);
         if (zone !== expected) {
-          toast({
-            title: "You can't plant it there!",
-            description: `${PLANT_DATABASE.find(p => p.id === plantId)?.name} lives in ${expected}.`,
-            variant: "destructive",
-          });
+          const name = PLANT_DATABASE.find(p => p.id === plantId)?.name ?? plantId;
+          showZoneError(`${name} lives in ${expected} — try there!`);
           return false;
         }
 
@@ -950,7 +954,7 @@ export function MapPage() {
       }
     }
     return false;
-  }, [placePlant, toast]);
+  }, [placePlant, showZoneError]);
 
   /* ── Drag end handler for inventory items ── */
   const handleDragEnd = (e: any, info: any, plantId: string) => {
@@ -979,11 +983,7 @@ export function MapPage() {
       const yPct = (y / vh) * 100;
       const success = placePlant(plantId, targetZone, xPct, yPct);
       if (!success) {
-        toast({
-          title: "You can't plant it there!",
-          description: `${plant?.name} lives in ${plant?.zone}.`,
-          variant: "destructive",
-        });
+        showZoneError(`${plant?.name ?? plantId} lives in ${plant?.zone} — try there!`);
       }
     }
   };
@@ -1255,6 +1255,28 @@ export function MapPage() {
 
       {plantDetailOverlay}
       {inventoryTray}
+
+      {/* Zone error banner — fully controlled, no toast/animation weirdness */}
+      <AnimatePresence>
+        {zoneError && (
+          <motion.div
+            key="zone-error"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+            className="absolute top-4 left-1/2 -translate-x-1/2 z-[300] pointer-events-none"
+          >
+            <div
+              className="px-5 py-2.5 rounded-full text-sm font-bold shadow-xl whitespace-nowrap"
+              style={{ background: "#b94040", color: "#fff", border: "2px solid rgba(255,255,255,0.3)" }}
+            >
+              ⚠️ {zoneError}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Drag ghost */}
       {dragGhost && dragGhost.x !== 0 && (
         <div
