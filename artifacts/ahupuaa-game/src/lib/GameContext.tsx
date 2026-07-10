@@ -3,6 +3,9 @@ import { loadWeeklyState, saveWeeklyState, checkTasks, WeeklyState } from './wee
 import { PLANT_DATA, PlantData } from './plantData';
 import { loadGameSave, saveGameData } from './AuthContext';
 
+/** Plants that start locked — unlocked by scanning or completing all tasks */
+export const LOCKED_PLANT_IDS = ['naupaka', 'limu'] as const;
+
 export type Zone = 'uka' | 'kula' | 'kai';
 
 export type Plant = PlantData & {
@@ -45,6 +48,7 @@ interface GameContextType {
   collectedPlants: string[];
   inventory: Plant[];
   placedPlants: PlacedPlant[];
+  lockedPlants: string[];
   collectPlant: (plant: Plant) => void;
   placePlant: (plantId: string, zone: Zone, x?: number, y?: number, wx?: number, wy?: number, wz?: number) => boolean;
   removePlacedPlant: (index: number) => void;
@@ -63,14 +67,15 @@ export function GameProvider({ children, username }: { children: ReactNode; user
 
   const [currentView, setCurrentView] = useState<ViewState>('ahupuaa');
 
-  // All plants always unlocked — full Plant Index access for everyone
+  // Collected = scanned. Restore from save; default gives everything except locked plants.
   const [collectedPlants, setCollectedPlants] = useState<string[]>(
-    PLANT_DATABASE.map(p => p.id)
+    savedState?.collectedPlants ??
+    PLANT_DATABASE.filter(p => !(LOCKED_PLANT_IDS as readonly string[]).includes(p.id)).map(p => p.id)
   );
 
-  // 2 of each plant in inventory on every session start
+  // 1 of each plant in inventory on every session start
   const [inventory, setInventory] = useState<Plant[]>(
-    PLANT_DATABASE.flatMap(p => [p, p])
+    PLANT_DATABASE.map(p => p)
   );
 
   // Per-user placed plants are preserved across sessions
@@ -139,6 +144,12 @@ export function GameProvider({ children, username }: { children: ReactNode; user
 
   const toggleDarkMode = () => setDarkMode(prev => !prev);
 
+  // A locked plant unlocks when scanned OR when all tasks are done
+  const allTasksDone = weeklyState.tasks.length > 0 && weeklyState.tasks.every(t => t.completed);
+  const lockedPlants = (LOCKED_PLANT_IDS as readonly string[]).filter(
+    id => !collectedPlants.includes(id) && !allTasksDone
+  );
+
   const incrementScanCount = useCallback(() => {
     setWeeklyState(prev => {
       const next = { ...prev, scanCount: prev.scanCount + 1 };
@@ -176,6 +187,7 @@ export function GameProvider({ children, username }: { children: ReactNode; user
         collectedPlants,
         inventory,
         placedPlants,
+        lockedPlants,
         collectPlant,
         placePlant,
         removePlacedPlant,

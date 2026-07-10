@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { useGame, Zone, PLANT_DATABASE, Plant } from "@/lib/GameContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { Leaf } from "lucide-react";
+import { Leaf, Lock } from "lucide-react";
 
 import * as THREE from "three";
 import { buildPlantModel } from "@/lib/plantModels";
@@ -36,7 +36,7 @@ function hasWebGL(): boolean {
 }
 
 export function MapPage() {
-  const { inventory, placedPlants, placePlant, removePlacedPlant } = useGame();
+  const { inventory, placedPlants, placePlant, removePlacedPlant, lockedPlants } = useGame();
   const [selectedPlantIdx, setSelectedPlantIdx] = useState<number | null>(null);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [zoneError, setZoneError] = useState<string | null>(null);
@@ -937,6 +937,12 @@ export function MapPage() {
         else if (point.y > 3.5) zone = 'kula';
         else zone = 'kai';
 
+        if (lockedPlants.includes(plantId)) {
+          const name = PLANT_DATABASE.find(p => p.id === plantId)?.name ?? plantId;
+          showZoneError(`${name} is locked — scan it or finish all tasks to unlock!`);
+          return false;
+        }
+
         const expected = getExpectedZone(plantId);
         if (zone !== expected) {
           const name = PLANT_DATABASE.find(p => p.id === plantId)?.name ?? plantId;
@@ -1024,35 +1030,57 @@ export function MapPage() {
                   No plants yet — go scan!
                 </div>
               ) : (
-                dedupedInventory.map(({ plant, count }) => (
-                  <motion.div
-                    key={plant.id}
-                    drag="y"
-                    dragSnapToOrigin
-                    onDragStart={() => setDragGhost({ plant, x: 0, y: 0 })}
-                    onDrag={(_e, info) => setDragGhost({ plant, x: info.point.x, y: info.point.y })}
-                    onDragEnd={(e, info) => {
-                      setDragGhost(null);
-                      webglAvailable ? handleDragEnd(e, info, plant.id) : handleDragEnd2D(e, info, plant.id);
-                    }}
-                    whileDrag={{ opacity: 0.3 }}
-                    className="relative shrink-0 w-20 h-20 rounded-2xl overflow-hidden shadow-lg cursor-grab active:cursor-grabbing"
-                    style={{ border: "2px solid rgba(47,111,78,0.25)" }}
-                  >
-                    <PlantPreview plantId={plant.id} />
-                    {/* Name label at bottom */}
-                    <div className="absolute bottom-0 left-0 right-0 py-0.5 text-center text-[9px] font-bold pointer-events-none"
-                      style={{ background: "rgba(38,52,47,0.65)", color: "#F6F1E7", lineHeight: 1.1 }}>
-                      {plant.name}
-                    </div>
-                    {count > 1 && (
-                      <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center pointer-events-none"
-                        style={{ background: "rgba(47,111,78,0.90)", color: "#F6F1E7" }}>
-                        {count}
-                      </span>
-                    )}
-                  </motion.div>
-                ))
+                dedupedInventory.map(({ plant, count }) => {
+                  const isLocked = lockedPlants.includes(plant.id);
+                  return (
+                    <motion.div
+                      key={plant.id}
+                      drag={isLocked ? false : "y"}
+                      dragSnapToOrigin
+                      onDragStart={isLocked ? undefined : () => setDragGhost({ plant, x: 0, y: 0 })}
+                      onDrag={isLocked ? undefined : (_e: any, info: any) => setDragGhost({ plant, x: info.point.x, y: info.point.y })}
+                      onDragEnd={isLocked ? undefined : (e: any, info: any) => {
+                        setDragGhost(null);
+                        webglAvailable ? handleDragEnd(e, info, plant.id) : handleDragEnd2D(e, info, plant.id);
+                      }}
+                      whileDrag={isLocked ? undefined : { opacity: 0.3 }}
+                      className="relative shrink-0 w-20 h-20 rounded-2xl overflow-hidden shadow-lg"
+                      style={{
+                        border: "2px solid rgba(47,111,78,0.25)",
+                        cursor: isLocked ? "not-allowed" : "grab",
+                      }}
+                    >
+                      {/* Plant image — dimmed when locked */}
+                      <div style={{ opacity: isLocked ? 0.35 : 1 }}>
+                        <PlantPreview plantId={plant.id} />
+                      </div>
+
+                      {/* Lock overlay */}
+                      {isLocked && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5"
+                          style={{ background: "rgba(20,30,25,0.55)" }}>
+                          <Lock size={18} color="#F6F1E7" />
+                          <span className="text-[8px] font-bold text-center leading-tight px-1"
+                            style={{ color: "#F6F1E7" }}>
+                            Scan to unlock
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Name label at bottom */}
+                      <div className="absolute bottom-0 left-0 right-0 py-0.5 text-center text-[9px] font-bold pointer-events-none"
+                        style={{ background: "rgba(38,52,47,0.65)", color: "#F6F1E7", lineHeight: 1.1 }}>
+                        {plant.name}
+                      </div>
+                      {count > 1 && !isLocked && (
+                        <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center pointer-events-none"
+                          style={{ background: "rgba(47,111,78,0.90)", color: "#F6F1E7" }}>
+                          {count}
+                        </span>
+                      )}
+                    </motion.div>
+                  );
+                })
               )}
             </div>
           </motion.div>
