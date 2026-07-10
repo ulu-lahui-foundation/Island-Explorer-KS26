@@ -4,7 +4,10 @@ export type WeeklyTaskType =
   | 'scan_count'
   | 'collect_plant'
   | 'all_zones'
-  | 'collect_any';
+  | 'collect_any'
+  | 'remove_plant'
+  | 'place_same'
+  | 'inventory_count';
 
 export type WeeklyTask = {
   id: string;
@@ -21,12 +24,13 @@ export type WeeklyState = {
   weekStart: string;
   loginCount: number;
   scanCount: number;
+  removeCount: number;
   tasks: WeeklyTask[];
   rewardClaimed: boolean;
   poolHash: string;
 };
 
-const STORAGE_KEY_PREFIX = 'ahupuaa_weekly_v2_';
+const STORAGE_KEY_PREFIX = 'ahupuaa_weekly_v3_';
 
 function storageKey(username?: string) {
   return STORAGE_KEY_PREFIX + (username ?? 'global');
@@ -41,15 +45,15 @@ function getWeekStart(): string {
   return d.toISOString().split('T')[0];
 }
 
+// Exactly 7 unique tasks — 5 are randomly chosen each week with no duplicates
 const TASK_POOL: Omit<WeeklyTask, 'id' | 'current' | 'completed'>[] = [
-  { type: 'login',       title: 'Log in 5 times',                  target: 5 },
-  { type: 'place_zone',  title: 'Plant a tree in the Uka section', target: 1, zone: 'uka' },
-  { type: 'scan_count',  title: 'Scan 5 plants',                  target: 5 },
-  { type: 'login',       title: 'Log in 5 times',                  target: 5 },
-  { type: 'collect_plant', title: 'Collect Kalo',                 target: 1, plantId: 'kalo' },
-  { type: 'collect_plant', title: 'Collect ʻŌhiʻa Lehua', target: 1, plantId: 'ohia' },
-  { type: 'all_zones',   title: 'Plant in all 3 zones',            target: 1 },
-  { type: 'login',       title: 'Log in to game 5 Times',           target: 5 },
+  { type: 'all_zones',       title: 'Plant in all three land zones',    target: 3 },
+  { type: 'scan_count',      title: 'Scan 5 plants',                    target: 5 },
+  { type: 'collect_plant',   title: 'Collect Naupaka Kahakai',          target: 1, plantId: 'naupaka' },
+  { type: 'login',           title: 'Log in 3 times',                   target: 3 },
+  { type: 'remove_plant',    title: 'Dig up one plant',                  target: 1 },
+  { type: 'place_same',      title: 'Plant two of the same plant',       target: 2 },
+  { type: 'inventory_count', title: 'Have 10 plants in your inventory', target: 10 },
 ];
 
 function getPoolHash(): string {
@@ -78,13 +82,16 @@ export function loadWeeklyState(username?: string): WeeklyState {
     const raw = localStorage.getItem(storageKey(username));
     if (raw) {
       const parsed = JSON.parse(raw) as WeeklyState;
-      if (parsed.weekStart === currentWeek && parsed.poolHash === currentHash) return parsed;
+      if (parsed.weekStart === currentWeek && parsed.poolHash === currentHash) {
+        return { ...parsed, removeCount: parsed.removeCount ?? 0 };
+      }
     }
   } catch { /* ignore */ }
   return {
     weekStart: currentWeek,
     loginCount: 0,
     scanCount: 0,
+    removeCount: 0,
     tasks: generateTasks(),
     rewardClaimed: false,
     poolHash: currentHash,
@@ -98,7 +105,8 @@ export function saveWeeklyState(state: WeeklyState, username?: string) {
 export function checkTasks(
   state: WeeklyState,
   collectedPlants: string[],
-  placedPlants: { zone: 'uka' | 'kula' | 'kai' }[],
+  placedPlants: { zone: 'uka' | 'kula' | 'kai'; plantId: string }[],
+  inventoryCount: number,
 ): WeeklyState {
   const updatedTasks = state.tasks.map(task => {
     let current = task.current;
@@ -109,6 +117,9 @@ export function checkTasks(
         break;
       case 'scan_count':
         current = state.scanCount;
+        break;
+      case 'remove_plant':
+        current = state.removeCount;
         break;
       case 'place_zone':
         current = task.zone && placedPlants.some(p => p.zone === task.zone) ? 1 : 0;
@@ -121,6 +132,17 @@ export function checkTasks(
         break;
       case 'collect_any':
         current = collectedPlants.length;
+        break;
+      case 'place_same': {
+        const counts = new Map<string, number>();
+        for (const p of placedPlants) {
+          counts.set(p.plantId, (counts.get(p.plantId) ?? 0) + 1);
+        }
+        current = counts.size > 0 ? Math.max(...counts.values()) : 0;
+        break;
+      }
+      case 'inventory_count':
+        current = inventoryCount;
         break;
     }
 

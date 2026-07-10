@@ -108,7 +108,7 @@ export function GameProvider({ children, username }: { children: ReactNode; user
   useEffect(() => {
     setWeeklyState(prev => {
       const incremented = { ...prev, loginCount: prev.loginCount + 1 };
-      const checked = checkTasks(incremented, collectedPlants, placedPlants);
+      const checked = checkTasks(incremented, collectedPlants, placedPlants, inventory.length);
       saveWeeklyState(checked, username ?? undefined);
       return checked;
     });
@@ -118,11 +118,11 @@ export function GameProvider({ children, username }: { children: ReactNode; user
   // Re-check tasks whenever game state changes
   useEffect(() => {
     setWeeklyState(prev => {
-      const checked = checkTasks(prev, collectedPlants, placedPlants);
+      const checked = checkTasks(prev, collectedPlants, placedPlants, inventory.length);
       saveWeeklyState(checked, username ?? undefined);
       return checked;
     });
-  }, [collectedPlants, placedPlants, username]);
+  }, [collectedPlants, placedPlants, inventory.length, username]);
 
   const collectPlant = (plant: Plant) => {
     setCollectedPlants(prev =>
@@ -152,15 +152,21 @@ export function GameProvider({ children, username }: { children: ReactNode; user
   const incrementScanCount = useCallback(() => {
     setWeeklyState(prev => {
       const next = { ...prev, scanCount: prev.scanCount + 1 };
-      const checked = checkTasks(next, collectedPlants, placedPlants);
+      const checked = checkTasks(next, collectedPlants, placedPlants, inventory.length);
       saveWeeklyState(checked, username ?? undefined);
       return checked;
     });
-  }, [collectedPlants, placedPlants, username]);
+  }, [collectedPlants, placedPlants, inventory.length, username]);
 
   const removePlacedPlant = useCallback((index: number) => {
     setPlacedPlants(prev => prev.filter((_, i) => i !== index));
-  }, []);
+    setWeeklyState(prev => {
+      const next = { ...prev, removeCount: prev.removeCount + 1 };
+      const checked = checkTasks(next, collectedPlants, placedPlants, inventory.length);
+      saveWeeklyState(checked, username ?? undefined);
+      return checked;
+    });
+  }, [collectedPlants, placedPlants, inventory.length, username]);
 
   const claimWeeklyReward = useCallback(() => {
     const limu = PLANT_DATABASE.find(p => p.id === 'limu');
