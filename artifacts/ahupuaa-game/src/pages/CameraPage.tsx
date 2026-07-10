@@ -8,28 +8,40 @@ import { motion, AnimatePresence } from "framer-motion";
 // Robust AI label → our Plant mapping
 // ---------------------------------------------------------------------------
 
+function normalizeToken(s: string): string {
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/[-_]/g, " ")   // hyphens / underscores → spaces
+    .replace(/\s+/g, " ");   // collapse whitespace
+}
+
 function findPlantByLabel(label: string): Plant | null {
   if (!label) return null;
 
-  const lower = label.toLowerCase().trim();
-  const stripped = lower.replace(/[^a-z]/g, "");
+  const norm = normalizeToken(label);
 
-  return (
-    PLANT_DATABASE.find((p) => {
-      const aliases = PLANT_ALIASES[p.id] ?? [];
-      return aliases.some((alias) => {
-        const a = alias.toLowerCase();
-        const as = a.replace(/[^a-z]/g, "");
-        return (
-          lower === a ||
-          lower.includes(a) ||
-          a.includes(lower) ||
-          stripped.includes(as) ||
-          as.includes(stripped)
-        );
-      });
-    }) ?? null
-  );
+  // 1. Try exact match against every alias first (fast, no false-positives)
+  for (const p of PLANT_DATABASE) {
+    for (const alias of PLANT_ALIASES[p.id] ?? []) {
+      if (norm === normalizeToken(alias)) return p;
+    }
+  }
+
+  // 2. Try whole-word containment: alias must appear as a complete word or phrase
+  //    in the label — not as an arbitrary substring (prevents "ulu" → "loulu").
+  for (const p of PLANT_DATABASE) {
+    for (const alias of PLANT_ALIASES[p.id] ?? []) {
+      const a = normalizeToken(alias);
+      if (!a) continue;
+      const escaped = a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      // Match the alias only at a word boundary (start, end, or surrounded by spaces)
+      const re = new RegExp(`(?:^|\\s)${escaped}(?:\\s|$)`);
+      if (re.test(norm)) return p;
+    }
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------

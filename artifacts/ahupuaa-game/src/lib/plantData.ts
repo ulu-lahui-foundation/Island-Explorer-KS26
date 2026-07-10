@@ -258,21 +258,76 @@ export const PLANT_DATA: PlantData[] = [
 ];
 
 export const PLANT_ALIASES: Record<string, string[]> = {
-  kalo:        ['kalo', 'taro', 'colocasia', 'esculenta'],
-  kukui:       ['kukui', 'candlenut', 'aleurites', 'moluccanus', 'candle nut'],
-  ohia:        ['ohia', 'ōhiʻa', 'lehua', 'metrosideros', 'polymorpha', 'ohia lehua'],
-  palapalai:   ['palapalai', 'microlepia', 'strigosa'],
-  pohinahina:  ['pohinahina', 'vitex', 'rotundifolia', 'beach vitex'],
-  hapuu:       ['hapuu', 'hāpuʻu', 'cibotium', 'glaucum', 'tree fern'],
-  loulu:       ['loulu', 'pritchardia', 'fan palm', 'hawaiian palm'],
-  naupaka:     ['naupaka', 'naupaka kahakai', 'scaevola', 'taccada', 'beach naupaka'],
-  aaliia:      ['aaliia', "a'alii", 'ʻaʻaliʻi', 'dodonaea', 'viscosa'],
-  ulu:         ['ulu', 'breadfruit', 'artocarpus', 'altilis'],
-  lai:         ['lai', 'lāʻī', 'cordyline', 'fruticosa', 'ti', 'ti plant'],
-  kupukupu:    ['kupukupu', 'nephrolepis', 'cordifolia', 'sword fern'],
-  alula:       ['alula', 'ālula', 'brighamia', 'insignis', 'cabbage on a stick'],
-  kokio:       ['kokio', 'kokio keokeо', 'hibiscus', 'immaculatus', 'white hibiscus'],
-  kooloaula:   ['kooloaula', "ko'oloaula", 'abutilon', 'menziesii'],
-  maile:       ['maile', 'alyxia', 'stellata'],
-  limu:        ['limu', 'limu kohu', 'asparagopsis', 'taxiformis', 'seaweed', 'red algae'],
+  kalo: [
+    'kalo', 'taro', 'colocasia', 'colocasia esculenta', 'esculenta',
+    'hawaiian taro', 'wetland taro',
+  ],
+  kukui: [
+    'kukui', 'candlenut', 'candle nut', 'kukui nut',
+    'aleurites', 'aleurites moluccanus', 'moluccanus',
+  ],
+  ohia: [
+    'ohia', 'ohia lehua', 'ohi a lehua', 'lehua',
+    'metrosideros', 'metrosideros polymorpha', 'polymorpha',
+  ],
+  palapalai: [
+    'palapalai', 'microlepia', 'microlepia strigosa', 'strigosa',
+    'hawaiian fern', 'lace fern',
+  ],
+  pohinahina: [
+    'pohinahina', 'beach vitex', 'vitex', 'vitex rotundifolia', 'rotundifolia',
+    'pohina', 'beach naupaka vitex',
+  ],
+  hapuu: [
+    'hapuu', 'hapu u', 'tree fern', 'hawaiian tree fern',
+    'cibotium', 'cibotium glaucum', 'glaucum',
+  ],
+  loulu: [
+    'loulu', 'hawaiian palm', 'fan palm', 'native palm',
+    'pritchardia', 'pritchardia spp',
+  ],
+  naupaka: [
+    'naupaka', 'naupaka kahakai', 'beach naupaka', 'coastal naupaka',
+    'scaevola', 'scaevola taccada', 'taccada',
+  ],
+  aaliia: [
+    'aaliia', 'a alii', "a'alii", 'aalii',
+    'dodonaea', 'dodonaea viscosa', 'viscosa',
+    'hopbush', 'hop bush',
+  ],
+  ulu: [
+    'ulu', 'breadfruit', 'bread fruit',
+    'artocarpus', 'artocarpus altilis', 'altilis',
+  ],
+  lai: [
+    'lai', 'ti', 'ti plant', 'ti leaf', 'la i',
+    'cordyline', 'cordyline fruticosa', 'fruticosa',
+    'good luck plant',
+  ],
+  kupukupu: [
+    'kupukupu', 'sword fern', 'nephrolepis', 'nephrolepis cordifolia', 'cordifolia',
+    'boston fern', 'kupuku',
+  ],
+  alula: [
+    'alula', 'olulu', 'vulcan palm', 'cabbage on a stick',
+    'brighamia', 'brighamia insignis', 'insignis',
+  ],
+  kokio: [
+    'kokio', 'kokio keokeо', 'kokio keokeo', 'white hibiscus', 'native hibiscus',
+    'hibiscus immaculatus', 'immaculatus',
+    'pua aloalo', 'hawaiian hibiscus',
+  ],
+  kooloaula: [
+    'kooloaula', 'ko oloaula', "ko'oloaula", 'red abutilon',
+    'abutilon', 'abutilon menziesii', 'menziesii',
+  ],
+  maile: [
+    'maile', 'alyxia', 'alyxia stellata', 'alyxia oliviformis', 'stellata',
+    'lei maile',
+  ],
+  limu: [
+    'limu', 'limu kohu', 'seaweed', 'red algae',
+    'asparagopsis', 'asparagopsis taxiformis', 'taxiformis',
+    'hawaiian seaweed',
+  ],
 };
