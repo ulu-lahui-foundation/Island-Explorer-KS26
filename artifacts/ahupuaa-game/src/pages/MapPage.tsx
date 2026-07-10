@@ -126,12 +126,16 @@ export function MapPage() {
       new THREE.SphereGeometry(25, 32, 32),
       new THREE.MeshBasicMaterial({ color: 0xfff5e6 }),
     );
+    // Fixed daytime position — high in the sky, slightly to the side for nice shadows
+    sunMesh.position.set(300, 400, -200);
     scene.add(sunMesh);
 
     const moonMesh = new THREE.Mesh(
       new THREE.SphereGeometry(18, 32, 32),
       new THREE.MeshBasicMaterial({ color: 0xddeeff }),
     );
+    // Hidden below the horizon permanently
+    moonMesh.position.set(0, -500, 0);
     scene.add(moonMesh);
 
     // Stars
@@ -154,6 +158,7 @@ export function MapPage() {
     scene.add(ambientLight);
 
     const dirLight = new THREE.DirectionalLight(0xfff5e6, 1.2);
+    dirLight.position.set(300, 400, -200); // matches fixed sun position
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.set(1024, 1024);
     dirLight.shadow.camera.near = 0.1;
@@ -166,10 +171,8 @@ export function MapPage() {
     scene.add(dirLight);
 
     const moonLight = new THREE.DirectionalLight(0x88bbff, 0);
-    moonLight.castShadow = true;
-    moonLight.shadow.mapSize.set(1024, 1024);
-    moonLight.shadow.camera.copy(dirLight.shadow.camera);
-    moonLight.shadow.bias = -0.001;
+    moonLight.castShadow = false;
+    moonLight.position.set(0, -500, 0); // permanently below horizon
     scene.add(moonLight);
 
     // ── Terrain ──
@@ -749,16 +752,8 @@ export function MapPage() {
         }
       }
 
-      // Sun / Moon orbit
-      const sunAngle = time * 0.1;
-      sunMesh.position.set(Math.cos(sunAngle) * 500, Math.sin(sunAngle) * 300 + 100, Math.sin(sunAngle) * 200);
-      dirLight.position.copy(sunMesh.position);
-      moonMesh.position.set(Math.cos(sunAngle + Math.PI) * 500, Math.sin(sunAngle + Math.PI) * 300 + 100, Math.sin(sunAngle + Math.PI) * 200);
-      moonLight.position.copy(moonMesh.position);
-
-      // Stars visibility based on sun height
-      const sunHeight = sunMesh.position.y;
-      starsMat.opacity = Math.max(0, 1 - (sunHeight + 50) / 200);
+      // Stars always hidden (permanent daytime)
+      starsMat.opacity = 0;
 
       // Ocean waves
       const oceanPos = oceanGeo.attributes.position;
