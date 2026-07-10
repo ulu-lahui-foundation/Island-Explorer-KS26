@@ -854,6 +854,12 @@ export function MapPage() {
     };
     window.addEventListener("resize", onResize);
 
+    // Cancel any auto-zoom the moment the user manually interacts with the camera
+    const onUserInteract = () => {
+      cameraTargetRef.current = null;
+    };
+    controls.addEventListener("start", onUserInteract);
+
     // Canvas tap handler: bounding-sphere check instead of recursive mesh raycast
     const onCanvasTap = (e: PointerEvent) => {
       const s = sceneRef.current;
@@ -899,6 +905,7 @@ export function MapPage() {
       cancelAnimationFrame(animId);
       window.removeEventListener("resize", onResize);
       renderer.domElement.removeEventListener("pointerdown", onCanvasTap);
+      controls.removeEventListener("start", onUserInteract);
       controls.dispose();
       renderer.dispose();
       if (renderer.domElement.parentElement) renderer.domElement.parentElement.removeChild(renderer.domElement);
