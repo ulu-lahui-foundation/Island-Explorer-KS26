@@ -68,9 +68,9 @@ export function GameProvider({ children, username }: { children: ReactNode; user
     PLANT_DATABASE.map(p => p.id)
   );
 
-  // 2 of each plant in inventory on every session start
+  // 1 of each plant in inventory on every session start
   const [inventory, setInventory] = useState<Plant[]>(
-    PLANT_DATABASE.flatMap(p => [p, p])
+    PLANT_DATABASE.map(p => p)
   );
 
   // Per-user placed plants are preserved across sessions
