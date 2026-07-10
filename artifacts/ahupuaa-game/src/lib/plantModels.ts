@@ -1769,7 +1769,7 @@ export function buildPlantModel(plantId: string): THREE.Group {
     case "kupukupu": {
       const fern = createKupukupuFern();
       group.add(fern);
-      group.scale.set(1.2, 1.2, 1.2);
+      group.scale.set(2.8, 2.8, 2.8);
       break;
     }
     case "hapuu": {
