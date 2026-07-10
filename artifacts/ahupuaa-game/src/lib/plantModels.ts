@@ -1763,7 +1763,7 @@ export function buildPlantModel(plantId: string): THREE.Group {
     case "pohinahina": {
       const pohinahina = createPohinahina();
       group.add(pohinahina);
-      group.scale.set(1.2, 1.2, 1.2);
+      group.scale.set(3.0, 3.0, 3.0);
       break;
     }
     case "kupukupu": {
@@ -1799,7 +1799,7 @@ export function buildPlantModel(plantId: string): THREE.Group {
     case "limu": {
       const limu = createLimuKohu();
       group.add(limu);
-      group.scale.set(1.2, 1.2, 1.2);
+      group.scale.set(3.0, 3.0, 3.0);
       break;
     }
     default: {
