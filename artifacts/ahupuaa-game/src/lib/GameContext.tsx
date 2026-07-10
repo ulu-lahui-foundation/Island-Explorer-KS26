@@ -67,8 +67,6 @@ export function GameProvider({ children, username }: { children: ReactNode; user
   const LOCKED_PLANTS = new Set([
     'naupaka',    // scan-only
     'limu',       // weekly task reward
-    'palapalai',  // newly added — not yet discovered
-    'aaliia',     // newly added — not yet discovered
     'alula',      // newly added — not yet discovered
     'kokio',      // newly added — not yet discovered
     'kooloaula',  // newly added — not yet discovered

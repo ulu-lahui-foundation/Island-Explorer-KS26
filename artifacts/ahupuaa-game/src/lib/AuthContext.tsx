@@ -23,19 +23,19 @@ export const TEST_ACCOUNTS: { username: string; password: string }[] = [
 const STARTER_SEEDS: Record<string, string[]> = {
   kai:     ['loulu', 'pohinahina', 'limu'],
   malia:   ['kalo', 'ohia', 'hala'],
-  kekoa:   ['hapuu', 'palapalai', 'aalii'],
+  kekoa:   ['hapuu', 'kukui', 'loulu'],
   leilani: ['lai', 'kukui', 'milo'],
   keoni:   ['ulu', 'naupaka', 'loulu'],
   noelani: ['ohia', 'koa', 'maunaloa'],
   makoa:   ['loulu', 'hapuu', 'kalo'],
   kalani:  ['limu', 'pohinahina', 'naupaka'],
-  haunani: ['palapalai', 'aalii', 'kukui'],
+  haunani: ['loulu', 'ulu', 'kukui'],
   kahiau:  ['lai', 'ulu', 'ohia'],
   palila:  ['koa', 'milo', 'hala'],
   mahina:  ['kalo', 'loulu', 'limu'],
   kawika:  ['hapuu', 'lai', 'pohinahina'],
-  loke:    ['ohia', 'palapalai', 'maunaloa'],
-  nani:    ['aalii', 'kukui', 'naupaka'],
+  loke:    ['ohia', 'kupukupu', 'maunaloa'],
+  nani:    ['loulu', 'kukui', 'naupaka'],
 };
 
 export type PlacedPlantSave = {
