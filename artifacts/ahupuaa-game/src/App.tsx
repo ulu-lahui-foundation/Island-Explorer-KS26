@@ -43,16 +43,6 @@ function SplashScreen({ onStart }: { onStart: () => void }) {
           width: '100%',
         }}
       >
-        {/* Leaf decoration */}
-        <motion.div
-          initial={{ scale: 0, rotate: -20 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ delay: 0.4, duration: 0.5, type: 'spring', stiffness: 200 }}
-          className="text-6xl mb-6 select-none"
-        >
-          🌿
-        </motion.div>
-
         <h1
           className="text-4xl font-extrabold text-center leading-tight mb-2"
           style={{ color: '#ffffff', letterSpacing: '-0.02em' }}
@@ -70,7 +60,7 @@ function SplashScreen({ onStart }: { onStart: () => void }) {
           className="text-sm text-center mb-10 leading-relaxed"
           style={{ color: 'rgba(255,255,255,0.50)' }}
         >
-          Explore Hawaiian ecology,{'\n'}scan plants, and restore the land.
+          Learn Hawaiian plants by scanning, identifying, collecting, and exploring your ahupuaʻa
         </p>
 
         <motion.button
