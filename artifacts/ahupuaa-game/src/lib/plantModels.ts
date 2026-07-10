@@ -1,6 +1,9 @@
 import * as THREE from "three";
 
-// ── ʻŌhiʻa Lehua procedural tree ──
+// ── Per-session model cache: build each plant type once, clone thereafter ──
+const _modelCache = new Map<string, THREE.Group>();
+
+// ── ʻŌhiʻa Lehua procedural tree (instanced leaves & stamens) ──
 export function createOhiaTree() {
   const treeGroup = new THREE.Group();
   const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8a8377, roughness: 1.0 });
@@ -11,11 +14,9 @@ export function createOhiaTree() {
   function buildBranch(parent: THREE.Object3D, length: number, radius: number, depth: number) {
     const branchGroup = new THREE.Group();
     parent.add(branchGroup);
-    const branchGeo = new THREE.CylinderGeometry(radius * 0.65, radius, length, 12);
+    const branchGeo = new THREE.CylinderGeometry(radius * 0.65, radius, length, 8);
     const branchMesh = new THREE.Mesh(branchGeo, trunkMaterial);
     branchMesh.position.y = length / 2;
-    branchMesh.castShadow = true;
-    branchMesh.receiveShadow = true;
     branchGroup.add(branchMesh);
     const tip = new THREE.Group();
     tip.position.y = length;
@@ -32,47 +33,92 @@ export function createOhiaTree() {
         childBranch.rotation.set(angleX, angleY, angleZ);
       }
     } else {
-      addFoliage(tip);
+      addFoliageMarkers(tip);
     }
     return branchGroup;
   }
 
-  function addFoliage(parent: THREE.Object3D) {
+  // Place lightweight marker Object3Ds; positions are resolved after updateMatrixWorld
+  function addFoliageMarkers(parent: THREE.Object3D) {
     const numLeafClusters = 8 + Math.floor(Math.random() * 6);
     for (let l = 0; l < numLeafClusters; l++) {
-      const leafRadius = 0.4 + Math.random() * 0.6;
-      const leafGeo = new THREE.SphereGeometry(leafRadius, 5, 5);
-      const leafMesh = new THREE.Mesh(leafGeo, leafMaterial);
-      leafMesh.position.set(
+      const m = new THREE.Object3D();
+      m.userData.ohiaType = 'leaf';
+      m.userData.r = 0.4 + Math.random() * 0.6;
+      m.position.set(
         (Math.random() - 0.5) * 2.0,
         (Math.random() - 0.5) * 1.5,
         (Math.random() - 0.5) * 2.0
       );
-      leafMesh.castShadow = true;
-      parent.add(leafMesh);
+      parent.add(m);
     }
     const numBlossoms = 4 + Math.floor(Math.random() * 5);
-    const stamenGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.6, 3);
-    stamenGeo.translate(0, 0.3, 0);
     for (let i = 0; i < numBlossoms; i++) {
-      const blossomGroup = new THREE.Group();
-      blossomGroup.position.set(
-        (Math.random() - 0.5) * 2.5,
-        0.5 + Math.random() * 1.5,
-        (Math.random() - 0.5) * 2.5
-      );
+      const bx = (Math.random() - 0.5) * 2.5;
+      const by = 0.5 + Math.random() * 1.5;
+      const bz = (Math.random() - 0.5) * 2.5;
       const numStamens = 30 + Math.floor(Math.random() * 20);
       for (let s = 0; s < numStamens; s++) {
-        const stamen = new THREE.Mesh(stamenGeo, blossomMaterial);
-        stamen.rotation.x = Math.random() * Math.PI;
-        stamen.rotation.y = Math.random() * Math.PI * 2;
-        blossomGroup.add(stamen);
+        const m = new THREE.Object3D();
+        m.userData.ohiaType = 'stamen';
+        m.position.set(bx, by, bz);
+        m.rotation.x = Math.random() * Math.PI;
+        m.rotation.y = Math.random() * Math.PI * 2;
+        parent.add(m);
       }
-      parent.add(blossomGroup);
     }
   }
 
   buildBranch(treeGroup, 4.0, 0.8, maxDepth);
+
+  // Resolve world-space positions and collapse into two InstancedMeshes
+  treeGroup.updateMatrixWorld(true);
+
+  const leafMarkers: THREE.Object3D[] = [];
+  const stamenMarkers: THREE.Object3D[] = [];
+  treeGroup.traverse((obj) => {
+    if (obj.userData.ohiaType === 'leaf') leafMarkers.push(obj);
+    else if (obj.userData.ohiaType === 'stamen') stamenMarkers.push(obj);
+  });
+
+  const dummy = new THREE.Object3D();
+  const wPos = new THREE.Vector3();
+  const wQuat = new THREE.Quaternion();
+
+  if (leafMarkers.length > 0) {
+    const leafGeo = new THREE.SphereGeometry(1, 5, 5);
+    const leafInst = new THREE.InstancedMesh(leafGeo, leafMaterial, leafMarkers.length);
+    leafMarkers.forEach((m, i) => {
+      m.getWorldPosition(wPos);
+      dummy.position.copy(wPos);
+      dummy.scale.setScalar(m.userData.r);
+      dummy.rotation.set(0, 0, 0);
+      dummy.updateMatrix();
+      leafInst.setMatrixAt(i, dummy.matrix);
+      m.parent?.remove(m);
+    });
+    leafInst.instanceMatrix.needsUpdate = true;
+    treeGroup.add(leafInst);
+  }
+
+  if (stamenMarkers.length > 0) {
+    const stamenGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.6, 3);
+    stamenGeo.translate(0, 0.3, 0);
+    const stamenInst = new THREE.InstancedMesh(stamenGeo, blossomMaterial, stamenMarkers.length);
+    stamenMarkers.forEach((m, i) => {
+      m.getWorldPosition(wPos);
+      m.getWorldQuaternion(wQuat);
+      dummy.position.copy(wPos);
+      dummy.quaternion.copy(wQuat);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      stamenInst.setMatrixAt(i, dummy.matrix);
+      m.parent?.remove(m);
+    });
+    stamenInst.instanceMatrix.needsUpdate = true;
+    treeGroup.add(stamenInst);
+  }
+
   return treeGroup;
 }
 
@@ -1195,19 +1241,23 @@ export function createUluTree() {
   function addFruit(branch: THREE.Group, branchLen: number) {
     const fruitGrp = new THREE.Group();
     const coreRadius = 0.6;
-    fruitGrp.add(new THREE.Mesh(new THREE.SphereGeometry(coreRadius, 10, 10), fruitMat));
+    fruitGrp.add(new THREE.Mesh(new THREE.SphereGeometry(coreRadius, 8, 8), fruitMat));
 
     const numBumps = 80;
     const phi = Math.PI * (3 - Math.sqrt(5));
+    const bumpInst = new THREE.InstancedMesh(fruitBumpGeo, fruitMat, numBumps);
+    const _dummy = new THREE.Object3D();
     for (let i = 0; i < numBumps; i++) {
       const y = 1 - (i / (numBumps - 1)) * 2;
       const r = Math.sqrt(1 - y * y);
       const theta = phi * i;
-      const bump = new THREE.Mesh(fruitBumpGeo, fruitMat);
-      bump.position.set(Math.cos(theta) * r * coreRadius * 0.95, y * coreRadius * 0.95, Math.sin(theta) * r * coreRadius * 0.95);
-      bump.scale.set(1, 1, 0.4);
-      fruitGrp.add(bump);
+      _dummy.position.set(Math.cos(theta) * r * coreRadius * 0.95, y * coreRadius * 0.95, Math.sin(theta) * r * coreRadius * 0.95);
+      _dummy.scale.set(1, 1, 0.4);
+      _dummy.updateMatrix();
+      bumpInst.setMatrixAt(i, _dummy.matrix);
     }
+    bumpInst.instanceMatrix.needsUpdate = true;
+    fruitGrp.add(bumpInst);
 
     const fruitStemGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.8);
     fruitStemGeo.translate(0, 0.4, 0);
@@ -1675,6 +1725,10 @@ function createGenericPlant() {
 
 // ── Build a complete plant model group with per-plant scale ──
 export function buildPlantModel(plantId: string): THREE.Group {
+  // Return a clone of the cached model if available (shares geometry/material GPU buffers)
+  const cached = _modelCache.get(plantId);
+  if (cached) return cached.clone();
+
   const group = new THREE.Group();
   const plantMat = new THREE.MeshStandardMaterial({ color: 0x4CAF50, roughness: 0.7, flatShading: true });
   const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5D4037, roughness: 0.9, flatShading: true });
@@ -1760,6 +1814,9 @@ export function buildPlantModel(plantId: string): THREE.Group {
       child.receiveShadow = true;
     }
   });
+
+  // Cache a clone so subsequent placements avoid rebuilding from scratch
+  _modelCache.set(plantId, group.clone());
 
   return group;
 }

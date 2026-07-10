@@ -69,6 +69,7 @@ export function MapPage() {
     raycaster: THREE.Raycaster;
     mouse: THREE.Vector2;
     spawnedPlants: THREE.Group[];
+    plantBoundingSpheres: THREE.Sphere[];
     cleanup: () => void;
     spawnPlant3D: (plantId: string, position: THREE.Vector3) => void;
     removePlant3D: (index: number) => void;
@@ -100,9 +101,9 @@ export function MapPage() {
     );
 
     renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     container.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -154,7 +155,7 @@ export function MapPage() {
 
     const dirLight = new THREE.DirectionalLight(0xfff5e6, 1.2);
     dirLight.castShadow = true;
-    dirLight.shadow.mapSize.set(2048, 2048);
+    dirLight.shadow.mapSize.set(1024, 1024);
     dirLight.shadow.camera.near = 0.1;
     dirLight.shadow.camera.far = 1500;
     dirLight.shadow.camera.left = -200;
@@ -166,7 +167,7 @@ export function MapPage() {
 
     const moonLight = new THREE.DirectionalLight(0x88bbff, 0);
     moonLight.castShadow = true;
-    moonLight.shadow.mapSize.set(2048, 2048);
+    moonLight.shadow.mapSize.set(1024, 1024);
     moonLight.shadow.camera.copy(dirLight.shadow.camera);
     moonLight.shadow.bias = -0.001;
     scene.add(moonLight);
@@ -421,7 +422,7 @@ export function MapPage() {
     scene.add(leavesInstanced);
 
     // ── Ocean ──
-    const oceanGeo = new THREE.PlaneGeometry(2000, 2000, 64, 64);
+    const oceanGeo = new THREE.PlaneGeometry(2000, 2000, 32, 32);
     oceanGeo.rotateX(-Math.PI / 2);
     const oceanMat = new THREE.MeshStandardMaterial({ color: 0x0077be, transparent: true, opacity: 0.75, roughness: 0.1, metalness: 0.6 });
     const ocean = new THREE.Mesh(oceanGeo, oceanMat);
@@ -658,12 +659,19 @@ export function MapPage() {
 
     // ── Spawn helpers ──
     const spawnedPlants: THREE.Group[] = [];
+    const plantBoundingSpheres: THREE.Sphere[] = [];
 
     const spawnPlant3D = (plantId: string, position: THREE.Vector3) => {
       const group = buildPlantModel(plantId);
       group.position.copy(position);
       scene.add(group);
       spawnedPlants.push(group);
+      // Pre-compute a world-space bounding sphere for fast tap detection
+      group.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(group);
+      const sphere = new THREE.Sphere();
+      box.getBoundingSphere(sphere);
+      plantBoundingSpheres.push(sphere);
     };
 
     const removePlant3D = (index: number) => {
@@ -671,6 +679,7 @@ export function MapPage() {
       if (group) {
         scene.remove(group);
         spawnedPlants.splice(index, 1);
+        plantBoundingSpheres.splice(index, 1);
       }
     };
 
@@ -828,7 +837,7 @@ export function MapPage() {
     };
     window.addEventListener("resize", onResize);
 
-    // Canvas tap handler: raycast against spawned plant meshes
+    // Canvas tap handler: bounding-sphere check instead of recursive mesh raycast
     const onCanvasTap = (e: PointerEvent) => {
       const s = sceneRef.current;
       if (!s || s.spawnedPlants.length === 0) return;
@@ -842,23 +851,17 @@ export function MapPage() {
       s.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       s.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       s.raycaster.setFromCamera(s.mouse, s.camera);
-      // Check each spawned plant group
+      const ray = s.raycaster.ray;
+      // O(n) sphere check — no recursive child traversal
       for (let i = 0; i < s.spawnedPlants.length; i++) {
-        const intersects = s.raycaster.intersectObjects(s.spawnedPlants[i].children, true);
-        if (intersects.length > 0) {
-          const worldPos = s.spawnedPlants[i].position.clone();
-          // Compute plant bounding box to frame it properly
-          const box = new THREE.Box3().setFromObject(s.spawnedPlants[i]);
-          const center = box.getCenter(new THREE.Vector3());
-          const size = box.getSize(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z);
-          // Camera distance to fit the whole plant in view
+        if (ray.intersectsSphere(s.plantBoundingSpheres[i])) {
+          const sphere = s.plantBoundingSpheres[i];
           const fov = s.camera.fov * (Math.PI / 180);
-          const dist = (maxDim / 2) / Math.tan(fov / 2) * 1.5; // 1.5x padding
+          const dist = sphere.radius / Math.tan(fov / 2) * 1.5;
           cameraTargetRef.current = {
-            target: center,
+            target: sphere.center.clone(),
             distance: dist,
-            height: 0, // head-on: camera at same Y as plant center
+            height: 0,
             active: true,
           };
           setSelectedPlantIdx(i);
@@ -868,7 +871,7 @@ export function MapPage() {
     };
     renderer.domElement.addEventListener("pointerdown", onCanvasTap);
 
-    sceneRef.current = { scene, camera, renderer, controls, terrain, backdrop, raycaster, mouse, spawnedPlants, spawnPlant3D, removePlant3D, cleanup: () => {
+    sceneRef.current = { scene, camera, renderer, controls, terrain, backdrop, raycaster, mouse, spawnedPlants, plantBoundingSpheres, spawnPlant3D, removePlant3D, cleanup: () => {
       cancelAnimationFrame(animId);
       window.removeEventListener("resize", onResize);
       renderer.domElement.removeEventListener("pointerdown", onCanvasTap);
