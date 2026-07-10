@@ -63,14 +63,14 @@ export function GameProvider({ children, username }: { children: ReactNode; user
 
   const [currentView, setCurrentView] = useState<ViewState>('ahupuaa');
 
-  // All plants always unlocked — full Plant Index access for everyone
+  // All plants unlocked by default except naupaka (scan-only) and limu (task reward)
   const [collectedPlants, setCollectedPlants] = useState<string[]>(
-    PLANT_DATABASE.map(p => p.id)
+    PLANT_DATABASE.map(p => p.id).filter(id => id !== 'naupaka' && id !== 'limu')
   );
 
-  // 1 of each plant in inventory on every session start
+  // 1 of each plant in inventory on session start, except naupaka and limu
   const [inventory, setInventory] = useState<Plant[]>(
-    PLANT_DATABASE.map(p => p)
+    PLANT_DATABASE.filter(p => p.id !== 'naupaka' && p.id !== 'limu')
   );
 
   // Per-user placed plants are preserved across sessions
