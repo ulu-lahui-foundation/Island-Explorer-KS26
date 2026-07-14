@@ -5,7 +5,7 @@ import multer from "multer";
 const router = Router();
 
 const ROBOFLOW_URL =
-  "https://serverless.roboflow.com/aina-intelligence-lab/workflows/plant-identification-app-20-v10-logic";
+  "https://serverless.roboflow.com/aina-intelligence-lab/workflows/plant-identification-app-20-vplant-identification-app-2-0-10-resnet18-t1-logic";
 
 const RETRY_ATTEMPTS = 2;
 const TIMEOUT_MS = 20_000;
