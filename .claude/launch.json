@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "api-server",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@workspace/api-server", "run", "dev"],
+      "port": 3001
+    },
+    {
+      "name": "ahupuaa-game",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@workspace/ahupuaa-game", "run", "dev"],
+      "port": 22395
+    }
+  ]
+}
