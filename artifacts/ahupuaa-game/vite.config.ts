@@ -63,6 +63,10 @@ export default defineConfig({
     strictPort: true,
     host: "0.0.0.0",
     allowedHosts: true,
+    // Local dev: forward /api to the api-server (Replit's router does this in the cloud)
+    proxy: {
+      "/api": `http://localhost:${process.env.API_PORT ?? 8080}`,
+    },
     fs: {
       strict: true,
     },
